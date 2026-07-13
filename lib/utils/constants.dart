@@ -17,7 +17,7 @@ const inkColor = Color(0xFF211E2B);
 const darkCanvas = Color(0xFF1B1824);
 const darkCard = Color(0xFF282432);
 
-const expenseCategories = <CategoryModel>[
+const predefinedExpenseCategories = <CategoryModel>[
   CategoryModel(
     name: 'Makanan',
     icon: Icons.restaurant_rounded,
@@ -62,7 +62,7 @@ const expenseCategories = <CategoryModel>[
   ),
 ];
 
-const incomeCategories = <CategoryModel>[
+const predefinedIncomeCategories = <CategoryModel>[
   CategoryModel(
     name: 'Gaji',
     icon: Icons.account_balance_wallet_rounded,
@@ -83,11 +83,23 @@ const incomeCategories = <CategoryModel>[
   ),
 ];
 
+final List<CategoryModel> expenseCategories = [...predefinedExpenseCategories];
+final List<CategoryModel> incomeCategories = [...predefinedIncomeCategories];
+
+void registerCustomCategories(List<CategoryModel> categories) {
+  expenseCategories
+    ..removeWhere((item) => item.isCustom)
+    ..addAll(categories.where((item) => item.type == 'expense'));
+  incomeCategories
+    ..removeWhere((item) => item.isCustom)
+    ..addAll(categories.where((item) => item.type == 'income'));
+}
+
 List<CategoryModel> categoriesFor(TransactionType type) =>
     type == TransactionType.income ? incomeCategories : expenseCategories;
 
 CategoryModel categoryByName(String name) =>
     [...expenseCategories, ...incomeCategories].firstWhere(
       (category) => category.name == name,
-      orElse: () => expenseCategories.last,
+      orElse: () => predefinedExpenseCategories.last,
     );

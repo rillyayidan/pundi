@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
+import '../providers/category_provider.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
@@ -19,6 +21,7 @@ class TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CategoryProvider>();
     final category = categoryByName(transaction.category);
     final positive = transaction.type == TransactionType.income;
     return InkWell(

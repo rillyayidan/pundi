@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
+import '../providers/category_provider.dart';
 import '../utils/constants.dart';
 
 class CategoryPicker extends StatelessWidget {
@@ -17,7 +19,7 @@ class CategoryPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories = categoriesFor(type);
+    final categories = context.watch<CategoryProvider>().forType(type);
     return Wrap(
       spacing: 8,
       runSpacing: 8,

@@ -58,4 +58,17 @@ void main() {
 
     expect(result.hasUsefulData, isFalse);
   });
+
+  test('extracts purchasable line items without treating total as an item', () {
+    final result = parser.parse('''
+TOKO CONTOH
+Roti Tawar 18.000
+Susu UHT 22.500
+TOTAL 40.500
+''');
+
+    expect(result.lineItems, hasLength(2));
+    expect(result.lineItems.first.label, 'Roti Tawar');
+    expect(result.lineItems.first.amount, 18000);
+  });
 }

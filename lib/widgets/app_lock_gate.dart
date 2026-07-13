@@ -3,6 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../providers/app_features_provider.dart';
 import '../utils/constants.dart';
+import '../screens/onboarding_screen.dart';
+import '../screens/recurring_screen.dart';
+import '../screens/settings_screen.dart';
+import '../services/notification_service.dart';
 
 class AppLockGate extends StatefulWidget {
   const AppLockGate({super.key, required this.child});
@@ -18,12 +22,31 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    NotificationService.tappedPayload.addListener(_handlePayload);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    NotificationService.tappedPayload.removeListener(_handlePayload);
     super.dispose();
+  }
+
+  void _handlePayload() {
+    final payload = NotificationService.tappedPayload.value;
+    if (payload == null || !mounted) return;
+    final features = context.read<AppFeaturesProvider>();
+    if (!features.initialized || features.locked || !features.onboardingSeen) {
+      return;
+    }
+    NotificationService.tappedPayload.value = null;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => payload.startsWith('recurring:')
+            ? const RecurringScreen()
+            : const SettingsScreen(),
+      ),
+    );
   }
 
   @override
@@ -39,7 +62,14 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
     if (!features.initialized) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (!features.locked) return widget.child;
+    if (!features.onboardingSeen) return const OnboardingScreen();
+    if (!features.locked) {
+      final payload = NotificationService.tappedPayload.value;
+      if (payload != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _handlePayload());
+      }
+      return widget.child;
+    }
     return Scaffold(
       body: SafeArea(
         child: Center(

@@ -13,6 +13,7 @@ class NotificationService {
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _plugin;
+  static final ValueNotifier<String?> tappedPayload = ValueNotifier(null);
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -27,7 +28,16 @@ class NotificationService {
         requestSoundPermission: false,
       ),
     );
-    await _plugin.initialize(settings: settings);
+    await _plugin.initialize(
+      settings: settings,
+      onDidReceiveNotificationResponse: (response) {
+        tappedPayload.value = response.payload;
+      },
+    );
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    if (launch?.didNotificationLaunchApp ?? false) {
+      tappedPayload.value = launch?.notificationResponse?.payload;
+    }
     _initialized = true;
   }
 
