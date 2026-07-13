@@ -19,15 +19,20 @@ class PundiApp extends StatelessWidget {
   ThemeData _theme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     final scheme = ColorScheme.fromSeed(
-      seedColor: brandGreen,
+      seedColor: pundiViolet,
       brightness: brightness,
-      surface: isDark ? const Color(0xFF101612) : warmSurface,
+      surface: isDark ? darkCanvas : warmSurface,
     );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
+      fontFamily: 'sans-serif',
+      textTheme: ThemeData(brightness: brightness).textTheme.apply(
+        bodyColor: isDark ? const Color(0xFFF2EDF7) : inkColor,
+        displayColor: isDark ? const Color(0xFFF2EDF7) : inkColor,
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -35,19 +40,19 @@ class PundiApp extends StatelessWidget {
         titleTextStyle: TextStyle(
           color: scheme.onSurface,
           fontSize: 22,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.5,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -0.8,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: isDark ? const Color(0xFF172019) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        color: isDark ? darkCard : const Color(0xFFFFFCF8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? const Color(0xFF172019) : Colors.white,
+        fillColor: isDark ? darkCard : const Color(0xFFFFFCF8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -67,18 +72,6 @@ class PundiApp extends StatelessWidget {
           vertical: 16,
         ),
       ),
-      navigationBarTheme: NavigationBarThemeData(
-        height: 70,
-        indicatorColor: scheme.primaryContainer,
-        labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => TextStyle(
-            fontSize: 11,
-            fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w700
-                : FontWeight.w500,
-          ),
-        ),
-      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 52),
@@ -87,6 +80,14 @@ class PundiApp extends StatelessWidget {
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant.withValues(alpha: .45),
+      ),
+      chipTheme: ChipThemeData(
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w700),
       ),
     );
   }

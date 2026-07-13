@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/parsed_bill_model.dart';
 import '../services/bill_parser_service.dart';
 import '../services/ocr_service.dart';
+import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/confidence_badge.dart';
@@ -97,38 +98,56 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Pindai struk')),
     body: ListView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 160),
       children: [
+        const Text(
+          'SMART SCAN',
+          style: TextStyle(
+            color: pundiCoral,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Struk masuk, beres.',
+          style: TextStyle(
+            fontSize: 29,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.1,
+          ),
+        ),
+        const SizedBox(height: 17),
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: .65),
-            borderRadius: BorderRadius.circular(28),
+            gradient: const LinearGradient(
+              colors: [pundiViolet, pundiVioletDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(32),
           ),
           child: Column(
             children: [
-              Icon(
-                Icons.document_scanner_rounded,
-                size: 66,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              Icon(Icons.document_scanner_rounded, size: 66, color: pundiAmber),
               const SizedBox(height: 14),
               const Text(
                 'Foto struk, biar Pundi yang membaca',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Pemrosesan OCR berjalan di perangkat. Hasilnya selalu bisa kamu koreksi sebelum disimpan.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                style: TextStyle(color: Colors.white70),
               ),
             ],
           ),

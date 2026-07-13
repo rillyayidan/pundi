@@ -13,9 +13,10 @@ import '../utils/date_formatter.dart';
 import '../widgets/category_picker.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key, this.parsedBill});
+  const AddTransactionScreen({super.key, this.parsedBill, this.transaction});
 
   final ParsedBillModel? parsedBill;
+  final TransactionModel? transaction;
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -26,27 +27,50 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   late final TextEditingController _amountController;
   late final TextEditingController _merchantController;
   late final TextEditingController _noteController;
-  TransactionType _type = TransactionType.expense;
+  late TransactionType _type;
   late String _category;
   late DateTime _date;
   bool _saving = false;
+
+  bool get _editing => widget.transaction != null;
 
   @override
   void initState() {
     super.initState();
     final parsed = widget.parsedBill;
+    final transaction = widget.transaction;
+    _type = transaction?.type ?? TransactionType.expense;
     _amountController = TextEditingController(
-      text: parsed?.amount == null ? '' : digitsOnlyRupiah(parsed!.amount!),
+      text: transaction != null
+          ? digitsOnlyRupiah(transaction.amount)
+          : parsed?.amount == null
+          ? ''
+          : digitsOnlyRupiah(parsed!.amount!),
     );
-    _merchantController = TextEditingController(text: parsed?.merchant ?? '');
-    _noteController = TextEditingController();
-    _date = parsed?.date ?? DateTime.now();
-    _category = parsed == null
-        ? expenseCategories.first.name
-        : CategorySuggesterService().suggest(
-            parsed.merchant,
-            rawText: parsed.rawText,
-          );
+    _merchantController = TextEditingController(
+      text: transaction?.merchant ?? parsed?.merchant ?? '',
+    );
+    _noteController = TextEditingController(text: transaction?.note ?? '');
+    final now = DateTime.now();
+    _date =
+        transaction?.date ??
+        (parsed?.date == null
+            ? now
+            : DateTime(
+                parsed!.date!.year,
+                parsed.date!.month,
+                parsed.date!.day,
+                now.hour,
+                now.minute,
+              ));
+    _category =
+        transaction?.category ??
+        (parsed == null
+            ? categoriesFor(_type).first.name
+            : CategorySuggesterService().suggest(
+                parsed.merchant,
+                rawText: parsed.rawText,
+              ));
   }
 
   @override
@@ -58,26 +82,62 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     setState(() => _saving = true);
     try {
-      await context.read<TransactionProvider>().add(
-        TransactionModel(
-          type: _type,
-          amount: parseRupiahInput(_amountController.text)!,
-          category: _category,
-          date: _date,
-          note: _noteController.text.trim(),
-          merchant: _merchantController.text.trim().isEmpty
-              ? null
-              : _merchantController.text.trim(),
-          receiptText: widget.parsedBill?.rawText,
-        ),
+      final transaction = TransactionModel(
+        id: widget.transaction?.id,
+        type: _type,
+        amount: parseRupiahInput(_amountController.text)!,
+        category: _category,
+        date: _date,
+        note: _noteController.text.trim(),
+        merchant: _merchantController.text.trim().isEmpty
+            ? null
+            : _merchantController.text.trim(),
+        receiptText:
+            widget.parsedBill?.rawText ?? widget.transaction?.receiptText,
+        createdAt: widget.transaction?.createdAt,
       );
+      final provider = context.read<TransactionProvider>();
+      if (_editing) {
+        await provider.update(transaction);
+      } else {
+        await provider.add(transaction);
+      }
       if (!mounted) {
         return;
       }
-      await context.read<DashboardProvider>().load();
+      final dashboard = context.read<DashboardProvider>();
+      await dashboard.load();
+      if (_type == TransactionType.expense && mounted) {
+        final limit = dashboard.limitFor(_category);
+        final spent = dashboard.spentFor(_category);
+        if (limit > 0 && spent > limit) {
+          await showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              icon: const Icon(
+                Icons.warning_amber_rounded,
+                color: pundiCoral,
+                size: 44,
+              ),
+              title: const Text('Anggaran terlewati'),
+              content: Text(
+                'Pengeluaran $_category sudah ${formatRupiah(spent - limit)} di atas anggaran bulan ini. Sebaiknya tekan pengeluaran kategori ini sampai periode berikutnya.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Saya mengerti'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
       if (mounted) {
         Navigator.of(context).pop(true);
       }
@@ -94,55 +154,124 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked != null) {
+      setState(
+        () => _date = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _date.hour,
+          _date.minute,
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_date),
+    );
+    if (picked != null) {
+      setState(
+        () => _date = DateTime(
+          _date.year,
+          _date.month,
+          _date.day,
+          picked.hour,
+          picked.minute,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(
-        widget.parsedBill == null
-            ? 'Tambah transaksi'
-            : 'Konfirmasi hasil pindai',
+        _editing
+            ? 'Edit transaksi'
+            : widget.parsedBill == null
+            ? 'Transaksi baru'
+            : 'Periksa hasil pindai',
       ),
     ),
     body: Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 38),
         children: [
-          SegmentedButton<TransactionType>(
-            segments: const [
-              ButtonSegment(
-                value: TransactionType.expense,
-                label: Text('Pengeluaran'),
-                icon: Icon(Icons.north_east_rounded),
-              ),
-              ButtonSegment(
-                value: TransactionType.income,
-                label: Text('Pemasukan'),
-                icon: Icon(Icons.south_west_rounded),
-              ),
-            ],
-            selected: {_type},
-            onSelectionChanged: (value) => setState(() {
-              _type = value.first;
-              _category = categoriesFor(_type).first.name;
-            }),
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: TransactionType.values.map((type) {
+                final selected = _type == type;
+                return Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => setState(() {
+                      _type = type;
+                      _category = categoriesFor(type).first.name;
+                    }),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? type == TransactionType.expense
+                                  ? pundiCoral
+                                  : successTeal
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        type == TransactionType.expense
+                            ? 'Pengeluaran'
+                            : 'Pemasukan',
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: selected ? Colors.white : null,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
           TextFormField(
             controller: _amountController,
-            autofocus: widget.parsedBill == null,
+            autofocus: !_editing && widget.parsedBill == null,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
+            ),
             decoration: const InputDecoration(
-              labelText: 'Jumlah',
+              labelText: 'Nominal',
               prefixText: 'Rp ',
             ),
             validator: (value) => (parseRupiahInput(value ?? '') ?? 0) <= 0
-                ? 'Masukkan jumlah lebih dari 0'
+                ? 'Masukkan nominal lebih dari 0'
                 : null,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           TextFormField(
             controller: _merchantController,
             textCapitalization: TextCapitalization.words,
@@ -152,11 +281,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ),
           ),
           const SizedBox(height: 22),
-          Text(
-            'Kategori',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          const Text(
+            'Pilih kategori',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 10),
           CategoryPicker(
@@ -165,29 +292,30 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             onChanged: (value) => setState(() => _category = value),
           ),
           const SizedBox(height: 22),
-          InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _date,
-                firstDate: DateTime(2000),
-                lastDate: DateTime.now().add(const Duration(days: 1)),
-              );
-              if (picked != null) setState(() => _date = picked);
-            },
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Tanggal',
-                prefixIcon: Icon(Icons.calendar_today_outlined),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: _DateTimeField(
+                  label: 'Tanggal',
+                  value: formatDate(_date),
+                  icon: Icons.calendar_today_outlined,
+                  onTap: _pickDate,
+                ),
               ),
-              child: Text(
-                formatDate(_date),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: _DateTimeField(
+                  label: 'Jam',
+                  value: formatTime(_date),
+                  icon: Icons.schedule_rounded,
+                  onTap: _pickTime,
+                ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           TextFormField(
             controller: _noteController,
             maxLines: 3,
@@ -207,9 +335,43 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.check_rounded),
-            label: Text(_saving ? 'Menyimpan...' : 'Simpan transaksi'),
+            label: Text(
+              _saving
+                  ? 'Menyimpan...'
+                  : _editing
+                  ? 'Simpan perubahan'
+                  : 'Simpan transaksi',
+            ),
           ),
         ],
+      ),
+    ),
+  );
+}
+
+class _DateTimeField extends StatelessWidget {
+  const _DateTimeField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.onTap,
+  });
+  final String label;
+  final String value;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(18),
+    onTap: onTap,
+    child: InputDecorator(
+      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.fade,
+        style: const TextStyle(fontWeight: FontWeight.w800),
       ),
     ),
   );

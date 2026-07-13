@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/constants.dart';
+import '../utils/date_formatter.dart';
 import '../widgets/transaction_tile.dart';
-import 'add_transaction_screen.dart';
+import 'transaction_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -14,8 +14,10 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _HistoryScreenState extends State<HistoryScreen>
+    with TickerProviderStateMixin {
   String _period = 'all';
+  bool _showCategories = false;
 
   Future<void> _applyPeriod(String value) async {
     final provider = context.read<TransactionProvider>();
@@ -67,126 +69,159 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  Future<void> _showActions(TransactionModel transaction) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.delete_outline_rounded),
-              title: const Text('Hapus transaksi'),
-              textColor: Theme.of(context).colorScheme.error,
-              iconColor: Theme.of(context).colorScheme.error,
-              onTap: () async {
-                Navigator.pop(sheetContext);
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Hapus transaksi?'),
-                    content: const Text('Tindakan ini tidak dapat dibatalkan.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Batal'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Hapus'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true && mounted) {
-                  await context.read<TransactionProvider>().delete(
-                    transaction.id!,
-                  );
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TransactionProvider>();
     final items = provider.transactions;
+    final categories = [...expenseCategories, ...incomeCategories];
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat')),
       body: RefreshIndicator(
-        onRefresh: () =>
-            context.read<TransactionProvider>().load(keepFilters: true),
+        color: pundiViolet,
+        onRefresh: () => provider.load(keepFilters: true),
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SegmentedButton<String>(
-                            segments: const [
-                              ButtonSegment(
-                                value: 'month',
-                                label: Text('Bulan ini'),
-                              ),
-                              ButtonSegment(value: 'all', label: Text('Semua')),
-                              ButtonSegment(
-                                value: 'custom',
-                                label: Text('Kustom'),
-                              ),
-                            ],
-                            selected: {_period},
-                            onSelectionChanged: (value) =>
-                                _applyPeriod(value.first),
-                          ),
+                    const Text(
+                      'RIWAYAT',
+                      style: TextStyle(
+                        color: pundiCoral,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Semua jejak uang',
+                      style: TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 17),
+                    _PeriodControl(value: _period, onChanged: _applyPeriod),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () =>
+                          setState(() => _showCategories = !_showCategories),
+                      borderRadius: BorderRadius.circular(18),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        height: 52,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: provider.filterCategory == null
+                              ? Theme.of(context).cardColor
+                              : pundiLilac,
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        const SizedBox(width: 10),
-                        PopupMenuButton<String?>(
-                          tooltip: 'Filter kategori',
-                          icon: Badge(
-                            isLabelVisible: provider.filterCategory != null,
-                            child: const Icon(Icons.tune_rounded),
-                          ),
-                          onSelected: (category) => provider.applyFilter(
-                            from: provider.filterFrom,
-                            toExclusive: provider.filterToExclusive,
-                            category: category,
-                          ),
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(
-                              value: null,
-                              child: Text('Semua kategori'),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.category_outlined,
+                              color: pundiViolet,
                             ),
-                            ...[...expenseCategories, ...incomeCategories].map(
-                              (category) => PopupMenuItem(
-                                value: category.name,
-                                child: Text(category.name),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Text(
+                                provider.filterCategory ?? 'Semua kategori',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            AnimatedRotation(
+                              turns: _showCategories ? .5 : 0,
+                              duration: const Duration(milliseconds: 220),
+                              child: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
                               ),
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                    if (provider.filterCategory != null) ...[
-                      const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: InputChip(
-                          label: Text(provider.filterCategory!),
-                          onDeleted: () => provider.applyFilter(
-                            from: provider.filterFrom,
-                            toExclusive: provider.filterToExclusive,
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _showCategories
+                          ? Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(top: 9),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor,
+                                borderRadius: BorderRadius.circular(22),
+                              ),
+                              child: Wrap(
+                                spacing: 7,
+                                runSpacing: 7,
+                                children: [
+                                  _CategoryChoice(
+                                    label: 'Semua',
+                                    selected: provider.filterCategory == null,
+                                    onTap: () {
+                                      provider.applyFilter(
+                                        from: provider.filterFrom,
+                                        toExclusive: provider.filterToExclusive,
+                                      );
+                                      setState(() => _showCategories = false);
+                                    },
+                                  ),
+                                  ...categories.map(
+                                    (category) => _CategoryChoice(
+                                      label: category.name,
+                                      selected:
+                                          provider.filterCategory ==
+                                          category.name,
+                                      onTap: () {
+                                        provider.applyFilter(
+                                          from: provider.filterFrom,
+                                          toExclusive:
+                                              provider.filterToExclusive,
+                                          category: category.name,
+                                        );
+                                        setState(() => _showCategories = false);
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox(width: double.infinity),
+                    ),
+                    const SizedBox(height: 17),
+                    Row(
+                      children: [
+                        Text(
+                          '${items.length} transaksi',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                    ],
+                        const Spacer(),
+                        if (_period == 'custom' && provider.filterFrom != null)
+                          Text(
+                            '${formatShortDate(provider.filterFrom!)} – ${formatShortDate(provider.filterToExclusive!.subtract(const Duration(days: 1)))}',
+                            style: const TextStyle(
+                              color: pundiViolet,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -196,38 +231,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 hasScrollBody: false,
                 child: Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(36),
+                    padding: const EdgeInsets.fromLTRB(36, 0, 36, 100),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.receipt_long_outlined,
-                          size: 60,
-                          color: Theme.of(context).colorScheme.primary,
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: const BoxDecoration(
+                            color: pundiLilac,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.receipt_long_outlined,
+                            color: pundiViolet,
+                            size: 34,
+                          ),
                         ),
                         const SizedBox(height: 14),
                         const Text(
-                          'Belum ada transaksi',
+                          'Tidak ada transaksi',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 5),
                         const Text(
-                          'Coba ubah filter atau tambahkan transaksi baru.',
+                          'Coba ganti rentang waktu atau kategori.',
                           textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 18),
-                        OutlinedButton.icon(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AddTransactionScreen(),
-                            ),
-                          ),
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('Tambah transaksi'),
                         ),
                       ],
                     ),
@@ -236,15 +268,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 160),
                 sliver: SliverList.separated(
                   itemCount: items.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    return TransactionTile(
-                      transaction: item,
-                      onDelete: () => _showActions(item),
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: TransactionTile(
+                        transaction: item,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TransactionDetailScreen(
+                              transactionId: item.id!,
+                            ),
+                          ),
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -254,4 +300,116 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
     );
   }
+}
+
+class _PeriodControl extends StatelessWidget {
+  const _PeriodControl({required this.value, required this.onChanged});
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 54,
+    padding: const EdgeInsets.all(5),
+    decoration: BoxDecoration(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      children: [
+        _PeriodOption(
+          label: 'Bulan ini',
+          selected: value == 'month',
+          onTap: () => onChanged('month'),
+        ),
+        _PeriodOption(
+          label: 'Semua',
+          selected: value == 'all',
+          onTap: () => onChanged('all'),
+        ),
+        _PeriodOption(
+          label: 'Kustom',
+          selected: value == 'custom',
+          onTap: () => onChanged('custom'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _PeriodOption extends StatelessWidget {
+  const _PeriodOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: selected ? pundiViolet : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        alignment: Alignment.center,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              color: selected ? Colors.white : null,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _CategoryChoice extends StatelessWidget {
+  const _CategoryChoice({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(13),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: selected ? pundiViolet : pundiLilac.withValues(alpha: .65),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        style: TextStyle(
+          color: selected ? Colors.white : pundiVioletDark,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ),
+  );
 }

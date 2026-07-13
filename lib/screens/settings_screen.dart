@@ -82,10 +82,28 @@ class SettingsScreen extends StatelessWidget {
     final transactions = context.watch<TransactionProvider>();
     final backup = BackupService(DatabaseHelper.instance);
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 160),
         children: [
+          const Text(
+            'PENGATURAN',
+            style: TextStyle(
+              color: pundiCoral,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Atur cara Pundi bekerja',
+            style: TextStyle(
+              fontSize: 29,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1.1,
+            ),
+          ),
+          const SizedBox(height: 22),
           Text(
             'Anggaran kategori',
             style: Theme.of(
@@ -99,6 +117,32 @@ class SettingsScreen extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
+          if (dashboard.overBudgetCategories.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFE4DA),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: pundiCoral),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${dashboard.overBudgetCategories.join(', ')} melewati anggaran. Tekan pengeluaran kategori ini sampai bulan berikutnya.',
+                      style: const TextStyle(
+                        color: Color(0xFF702918),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Card(
             child: Padding(

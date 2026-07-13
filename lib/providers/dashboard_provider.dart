@@ -46,4 +46,9 @@ class DashboardProvider extends ChangeNotifier {
 
   double spentFor(String category) => expensesByCategory[category] ?? 0;
   double limitFor(String category) => budgets[category] ?? 0;
+
+  List<String> get overBudgetCategories => budgets.entries
+      .where((entry) => entry.value > 0 && spentFor(entry.key) > entry.value)
+      .map((entry) => entry.key)
+      .toList(growable: false);
 }

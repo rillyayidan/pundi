@@ -24,20 +24,40 @@ class CategoryPicker extends StatelessWidget {
       children: categories
           .map((category) {
             final selected = value == category.name;
-            return ChoiceChip(
-              selected: selected,
-              onSelected: (_) => onChanged(category.name),
-              avatar: Icon(
-                category.icon,
-                size: 17,
-                color: selected
-                    ? Theme.of(context).colorScheme.onSecondaryContainer
-                    : category.color,
-              ),
-              label: Text(category.name),
-              side: BorderSide.none,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+            return InkWell(
+              onTap: () => onChanged(category.name),
+              borderRadius: BorderRadius.circular(15),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 190),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? category.color
+                      : category.color.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      category.icon,
+                      size: 17,
+                      color: selected ? Colors.white : category.color,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      category.name,
+                      style: TextStyle(
+                        color: selected ? Colors.white : null,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           })

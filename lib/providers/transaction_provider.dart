@@ -35,6 +35,15 @@ class TransactionProvider extends ChangeNotifier {
   DateTime? get filterToExclusive => _filterToExclusive;
   String? get filterCategory => _filterCategory;
 
+  TransactionModel? findById(int id) {
+    for (final transaction in _allTransactions) {
+      if (transaction.id == id) {
+        return transaction;
+      }
+    }
+    return null;
+  }
+
   double get totalIncome => _allTransactions
       .where((item) => item.type == TransactionType.income)
       .fold(0, (sum, item) => sum + item.amount);

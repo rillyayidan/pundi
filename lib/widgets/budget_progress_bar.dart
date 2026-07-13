@@ -22,7 +22,7 @@ class BudgetProgressBar extends StatelessWidget {
     final ratio = limit <= 0 ? 0.0 : spent / limit;
     final displayRatio = ratio.clamp(0.0, 1.0);
     final color = ratio >= 1
-        ? Theme.of(context).colorScheme.error
+        ? pundiCoral
         : ratio >= .8
         ? const Color(0xFFF59E0B)
         : brandGreen;
@@ -45,6 +45,8 @@ class BudgetProgressBar extends StatelessWidget {
                 Text(
                   limit <= 0
                       ? 'Atur anggaran'
+                      : ratio > 1
+                      ? 'Lewat ${formatRupiah(spent - limit)}'
                       : '${formatRupiah(spent)} / ${formatRupiah(limit)}',
                   style: Theme.of(context).textTheme.labelMedium,
                 ),

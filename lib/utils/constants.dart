@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 import '../models/category_model.dart';
 import '../models/transaction_model.dart';
 
-const brandGreen = Color(0xFF1F7A3D);
-const brandGreenDark = Color(0xFF12562A);
-const brandMint = Color(0xFFE7F4EA);
-const warmSurface = Color(0xFFF8F8F4);
-const inkColor = Color(0xFF18211B);
+const pundiViolet = Color(0xFF6657D9);
+const pundiVioletDark = Color(0xFF40338F);
+const pundiLilac = Color(0xFFE9E5FF);
+const pundiCoral = Color(0xFFFF7657);
+const pundiAmber = Color(0xFFFFC857);
+const successTeal = Color(0xFF218C7A);
+const brandGreen = successTeal;
+const brandGreenDark = Color(0xFF17695B);
+const brandMint = Color(0xFFDDF3EE);
+const warmSurface = Color(0xFFF5F0E8);
+const inkColor = Color(0xFF211E2B);
+const darkCanvas = Color(0xFF1B1824);
+const darkCard = Color(0xFF282432);
 
 const expenseCategories = <CategoryModel>[
   CategoryModel(
@@ -58,7 +66,7 @@ const incomeCategories = <CategoryModel>[
   CategoryModel(
     name: 'Gaji',
     icon: Icons.account_balance_wallet_rounded,
-    color: brandGreen,
+    color: successTeal,
     type: 'income',
   ),
   CategoryModel(

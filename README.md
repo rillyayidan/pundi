@@ -5,11 +5,11 @@ Pundi adalah aplikasi pencatat keuangan Flutter yang sepenuhnya offline. Penggun
 ## Fitur
 
 - Dashboard saldo, pemasukan/pengeluaran bulan berjalan, dan transaksi terbaru.
-- CRUD transaksi lokal dengan filter periode dan kategori.
+- CRUD transaksi lokal dengan halaman detail, catatan, tanggal/jam, edit, hapus, serta filter periode dan kategori.
 - Kamera/galeri → OCR on-device → parser struk → konfirmasi yang dapat diedit.
 - Saran kategori berbasis kata kunci merchant dan teks struk.
-- Anggaran per kategori dengan indikator mendekati/melewati batas.
-- Donut chart pengeluaran kategori dan bar chart arus kas enam bulan.
+- Anggaran per kategori dengan peringatan eksplisit saat batas bulanan terlewati.
+- Donut chart kategori dan arus kas dengan rentang 7 hari, bulan berjalan, atau tanggal kustom.
 - Ekspor transaksi CSV serta backup/restore penuh dalam JSON.
 - Material 3, tema terang/gelap, tanpa backend, akun, atau network call.
 
@@ -63,4 +63,3 @@ lib/
 ├── utils/      # categories and Indonesian formatting
 └── widgets/    # reusable presentation components
 ```
-
