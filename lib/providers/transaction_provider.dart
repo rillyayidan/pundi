@@ -13,6 +13,7 @@ class TransactionProvider extends ChangeNotifier {
   DateTime? _filterFrom;
   DateTime? _filterToExclusive;
   String? _filterCategory;
+  String _searchQuery = '';
 
   List<TransactionModel> get allTransactions =>
       List.unmodifiable(_allTransactions);
@@ -26,6 +27,15 @@ class TransactionProvider extends ChangeNotifier {
       if (_filterCategory != null && item.category != _filterCategory) {
         return false;
       }
+      if (_searchQuery.isNotEmpty) {
+        final haystack = [
+          item.merchant ?? '',
+          item.note,
+          item.category,
+          item.amount.toStringAsFixed(0),
+        ].join(' ').toLowerCase();
+        if (!haystack.contains(_searchQuery)) return false;
+      }
       return true;
     }),
   );
@@ -34,6 +44,7 @@ class TransactionProvider extends ChangeNotifier {
   DateTime? get filterFrom => _filterFrom;
   DateTime? get filterToExclusive => _filterToExclusive;
   String? get filterCategory => _filterCategory;
+  String get searchQuery => _searchQuery;
 
   TransactionModel? findById(int id) {
     for (final transaction in _allTransactions) {
@@ -59,6 +70,7 @@ class TransactionProvider extends ChangeNotifier {
       _filterFrom = null;
       _filterToExclusive = null;
       _filterCategory = null;
+      _searchQuery = '';
     }
     await _run(() async {
       final result = await _database.getTransactions();
@@ -79,6 +91,14 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSearchQuery(String value) {
+    _searchQuery = value.trim().toLowerCase();
+    notifyListeners();
+  }
+
+  Future<String?> rememberedCategory(String merchant) =>
+      _database.getRememberedCategory(merchant);
+
   Future<void> add(TransactionModel transaction) async {
     if (transaction.amount <= 0) {
       throw ArgumentError.value(
@@ -88,11 +108,25 @@ class TransactionProvider extends ChangeNotifier {
       );
     }
     await _database.insertTransaction(transaction);
+    await _remember(transaction);
+    await load(keepFilters: true);
+  }
+
+  Future<void> addAll(List<TransactionModel> transactions) async {
+    if (transactions.any((item) => item.amount <= 0)) {
+      throw ArgumentError('Semua nominal transaksi harus lebih dari 0.');
+    }
+    await _database.insertTransactions(transactions);
+    final categories = transactions.map((item) => item.category).toSet();
+    if (categories.length == 1) {
+      await _remember(transactions.first);
+    }
     await load(keepFilters: true);
   }
 
   Future<void> update(TransactionModel transaction) async {
     await _database.updateTransaction(transaction);
+    await _remember(transaction);
     await load(keepFilters: true);
   }
 
@@ -114,5 +148,11 @@ class TransactionProvider extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _remember(TransactionModel transaction) async {
+    final merchant = transaction.merchant?.trim();
+    if (merchant == null || merchant.isEmpty) return;
+    await _database.rememberMerchantCategory(merchant, transaction.category);
   }
 }

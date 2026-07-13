@@ -6,11 +6,14 @@ import 'package:provider/provider.dart';
 import '../database/database_helper.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/app_features_provider.dart';
 import '../services/backup_service.dart';
 import '../services/export_service.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/budget_progress_bar.dart';
+import '../utils/date_formatter.dart';
+import 'recurring_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -80,6 +83,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final dashboard = context.watch<DashboardProvider>();
     final transactions = context.watch<TransactionProvider>();
+    final features = context.watch<AppFeaturesProvider>();
     final backup = BackupService(DatabaseHelper.instance);
     return Scaffold(
       body: ListView(
@@ -163,12 +167,121 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           Text(
+            'Otomasi & privasi',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const _SettingsIcon(
+                    icon: Icons.event_repeat_rounded,
+                  ),
+                  title: const Text(
+                    'Transaksi berulang',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    features.recurringRules.isEmpty
+                        ? 'Atur gaji, kos, cicilan, atau langganan'
+                        : '${features.recurringRules.length} jadwal · ${features.dueRules.length} menunggu',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RecurringScreen()),
+                  ),
+                ),
+                const Divider(height: 1, indent: 72),
+                SwitchListTile(
+                  secondary: const _SettingsIcon(
+                    icon: Icons.notifications_active_outlined,
+                  ),
+                  title: const Text(
+                    'Pengingat lokal',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text('Jadwal rutin dan pengingat backup'),
+                  value: features.notificationsEnabled,
+                  onChanged: (value) async {
+                    final success = await features.setNotificationsEnabled(
+                      value,
+                    );
+                    if (!success && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Izin notifikasi tidak diberikan oleh perangkat.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const Divider(height: 1, indent: 72),
+                SwitchListTile(
+                  secondary: const _SettingsIcon(
+                    icon: Icons.fingerprint_rounded,
+                  ),
+                  title: const Text(
+                    'Kunci aplikasi',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    features.securitySupported
+                        ? 'Gunakan biometrik atau kunci layar perangkat'
+                        : 'Keamanan perangkat tidak tersedia',
+                  ),
+                  value: features.lockEnabled,
+                  onChanged: features.securitySupported
+                      ? (value) async {
+                          final success = await features.setLockEnabled(value);
+                          if (!success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Autentikasi tidak berhasil.'),
+                              ),
+                            );
+                          }
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          Text(
             'Data & cadangan',
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 12),
+          if (features.backupReminderNeeded) ...[
+            Container(
+              padding: const EdgeInsets.all(15),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: pundiLilac,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.backup_rounded, color: pundiViolet),
+                  SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      'Ada data baru yang belum dicadangkan. Buat JSON agar aman saat aplikasi dihapus atau HP direset.',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Card(
             child: Column(
               children: [
@@ -199,11 +312,17 @@ class SettingsScreen extends StatelessWidget {
                     'Cadangkan ke JSON',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  subtitle: const Text('Simpan seluruh transaksi & anggaran'),
+                  subtitle: Text(
+                    features.lastBackupAt == null
+                        ? 'Belum pernah dicadangkan'
+                        : 'Terakhir ${formatDateTime(features.lastBackupAt!)}',
+                  ),
                   trailing: const Icon(Icons.ios_share_rounded),
                   onTap: () => _run(
                     context,
-                    backup.shareBackup,
+                    () => backup.shareBackup(
+                      onCreated: features.markBackupCreated,
+                    ),
                     'Cadangan siap dibagikan.',
                   ),
                 ),

@@ -18,6 +18,13 @@ class _HistoryScreenState extends State<HistoryScreen>
     with TickerProviderStateMixin {
   String _period = 'all';
   bool _showCategories = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _applyPeriod(String value) async {
     final provider = context.read<TransactionProvider>();
@@ -106,6 +113,25 @@ class _HistoryScreenState extends State<HistoryScreen>
                     ),
                     const SizedBox(height: 17),
                     _PeriodControl(value: _period, onChanged: _applyPeriod),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _searchController,
+                      onChanged: provider.setSearchQuery,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Cari merchant, catatan, nominal...',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: provider.searchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  provider.setSearchQuery('');
+                                },
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     InkWell(
                       onTap: () =>

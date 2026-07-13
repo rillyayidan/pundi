@@ -24,7 +24,7 @@ class BackupService {
     );
   }
 
-  Future<void> shareBackup() async {
+  Future<void> shareBackup({Future<void> Function()? onCreated}) async {
     final file = await createBackupFile();
     await SharePlus.instance.share(
       ShareParams(
@@ -32,6 +32,7 @@ class BackupService {
         files: [XFile(file.path, mimeType: 'application/json')],
       ),
     );
+    await onCreated?.call();
   }
 
   Future<void> restoreFromFile(String path) async {

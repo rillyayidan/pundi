@@ -6,6 +6,7 @@ import 'app.dart';
 import 'database/database_helper.dart';
 import 'providers/dashboard_provider.dart';
 import 'providers/transaction_provider.dart';
+import 'providers/app_features_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => DashboardProvider(database)..load(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AppFeaturesProvider(database)..initialize(),
         ),
       ],
       child: const PundiApp(),

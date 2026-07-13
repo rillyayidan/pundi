@@ -35,9 +35,14 @@ class CategoryPicker extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: selected
-                      ? category.color
+                      ? pundiViolet
                       : category.color.withValues(alpha: .1),
                   borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: selected
+                        ? pundiVioletDark
+                        : category.color.withValues(alpha: .18),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -51,7 +56,9 @@ class CategoryPicker extends StatelessWidget {
                     Text(
                       category.name,
                       style: TextStyle(
-                        color: selected ? Colors.white : null,
+                        color: selected
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurface,
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                       ),

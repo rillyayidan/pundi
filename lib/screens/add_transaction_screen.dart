@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/parsed_bill_model.dart';
 import '../models/transaction_model.dart';
+import '../models/split_part_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/category_suggester_service.dart';
@@ -11,6 +12,7 @@ import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/category_picker.dart';
+import 'split_receipt_screen.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key, this.parsedBill, this.transaction});
@@ -31,6 +33,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   late String _category;
   late DateTime _date;
   bool _saving = false;
+  bool _merchantRemembered = false;
+  List<SplitPartModel>? _splitParts;
 
   bool get _editing => widget.transaction != null;
 
@@ -71,6 +75,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 parsed.merchant,
                 rawText: parsed.rawText,
               ));
+    if ((_merchantController.text.trim()).isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _applyMerchantMemory(),
+      );
+    }
   }
 
   @override
@@ -87,10 +96,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
     setState(() => _saving = true);
     try {
+      final amount = parseRupiahInput(_amountController.text)!;
+      final splitParts = _splitParts;
+      if (splitParts != null &&
+          (splitParts.fold<double>(0, (sum, part) => sum + part.amount) -
+                      amount)
+                  .abs() >
+              .5) {
+        throw const FormatException(
+          'Total pembagian tidak sama dengan nominal transaksi.',
+        );
+      }
       final transaction = TransactionModel(
         id: widget.transaction?.id,
         type: _type,
-        amount: parseRupiahInput(_amountController.text)!,
+        amount: amount,
         category: _category,
         date: _date,
         note: _noteController.text.trim(),
@@ -104,6 +124,22 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final provider = context.read<TransactionProvider>();
       if (_editing) {
         await provider.update(transaction);
+      } else if (splitParts != null) {
+        await provider.addAll(
+          splitParts
+              .map(
+                (part) => TransactionModel(
+                  type: _type,
+                  amount: part.amount,
+                  category: part.category,
+                  date: _date,
+                  note: _noteController.text.trim(),
+                  merchant: transaction.merchant,
+                  receiptText: transaction.receiptText,
+                ),
+              )
+              .toList(growable: false),
+        );
       } else {
         await provider.add(transaction);
       }
@@ -152,6 +188,41 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         setState(() => _saving = false);
       }
     }
+  }
+
+  Future<void> _applyMerchantMemory() async {
+    final merchant = _merchantController.text.trim();
+    if (merchant.isEmpty || !mounted) return;
+    final remembered = await context
+        .read<TransactionProvider>()
+        .rememberedCategory(merchant);
+    if (!mounted || remembered == null || remembered == _category) return;
+    if (!categoriesFor(_type).any((item) => item.name == remembered)) return;
+    setState(() {
+      _category = remembered;
+      _merchantRemembered = true;
+    });
+  }
+
+  Future<void> _openSplit() async {
+    final total = parseRupiahInput(_amountController.text) ?? 0;
+    if (total <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Isi nominal total terlebih dahulu.')),
+      );
+      return;
+    }
+    final result = await Navigator.push<List<SplitPartModel>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SplitReceiptScreen(
+          total: total,
+          initialCategory: _category,
+          initialParts: _splitParts ?? const [],
+        ),
+      ),
+    );
+    if (result != null && mounted) setState(() => _splitParts = result);
   }
 
   Future<void> _pickDate() async {
@@ -275,6 +346,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           TextFormField(
             controller: _merchantController,
             textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: () {
+              FocusScope.of(context).unfocus();
+              _applyMerchantMemory();
+            },
             decoration: const InputDecoration(
               labelText: 'Merchant (opsional)',
               prefixIcon: Icon(Icons.storefront_outlined),
@@ -291,6 +367,76 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             value: _category,
             onChanged: (value) => setState(() => _category = value),
           ),
+          if (_merchantRemembered) ...[
+            const SizedBox(height: 10),
+            const Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, color: pundiViolet, size: 18),
+                SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    'Kategori dipilih dari koreksi merchant sebelumnya.',
+                    style: TextStyle(
+                      color: pundiVioletDark,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (!_editing && _type == TransactionType.expense) ...[
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: _openSplit,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: _splitParts == null
+                      ? Theme.of(context).cardColor
+                      : pundiLilac,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: _splitParts == null
+                        ? Theme.of(context).colorScheme.outlineVariant
+                        : pundiViolet.withValues(alpha: .35),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.call_split_rounded, color: pundiViolet),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _splitParts == null
+                                ? 'Bagi ke beberapa kategori'
+                                : '${_splitParts!.length} bagian aktif',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          Text(
+                            _splitParts == null
+                                ? 'Cocok untuk satu struk dengan isi campuran'
+                                : 'Ketuk untuk memeriksa pembagian',
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_splitParts != null)
+                      IconButton(
+                        onPressed: () => setState(() => _splitParts = null),
+                        icon: const Icon(Icons.close_rounded),
+                      )
+                    else
+                      const Icon(Icons.chevron_right_rounded),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 22),
           Row(
             children: [

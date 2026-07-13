@@ -4,20 +4,37 @@ import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/app_features_provider.dart';
+import '../models/recurring_rule_model.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/budget_progress_bar.dart';
 import '../widgets/transaction_tile.dart';
 import 'transaction_detail_screen.dart';
+import 'recurring_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  Future<void> _recordRecurring(
+    BuildContext context,
+    RecurringRuleModel rule,
+  ) async {
+    await context.read<TransactionProvider>().add(
+      rule.toTransaction(date: DateTime.now()),
+    );
+    if (!context.mounted) return;
+    await context.read<AppFeaturesProvider>().advanceRecurring(rule);
+    if (!context.mounted) return;
+    await context.read<DashboardProvider>().load();
+  }
 
   @override
   Widget build(BuildContext context) {
     final transactions = context.watch<TransactionProvider>();
     final dashboard = context.watch<DashboardProvider>();
+    final features = context.watch<AppFeaturesProvider>();
     final now = DateTime.now();
     final thisMonth = transactions.allTransactions.where(
       (item) => item.date.year == now.year && item.date.month == now.month,
@@ -37,7 +54,16 @@ class HomeScreen extends StatelessWidget {
       ]),
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _Header(month: formatMonth(now))),
+          SliverToBoxAdapter(
+            child: _Header(
+              month: formatMonth(now),
+              dueCount: features.dueRules.length,
+              onNotificationsTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RecurringScreen()),
+              ),
+            ),
+          ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(18, 4, 18, 160),
             sliver: SliverList.list(
@@ -47,6 +73,25 @@ class HomeScreen extends StatelessWidget {
                   income: income,
                   expense: expense,
                 ),
+                if (features.dueRules.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _DueRecurringCard(
+                    rule: features.dueRules.first,
+                    remaining: features.dueRules.length - 1,
+                    onRecord: () =>
+                        _recordRecurring(context, features.dueRules.first),
+                    onOpen: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RecurringScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+                if (features.backupReminderNeeded) ...[
+                  const SizedBox(height: 12),
+                  const _BackupNudge(),
+                ],
                 if (dashboard.overBudgetCategories.isNotEmpty) ...[
                   const SizedBox(height: 14),
                   _BudgetWarning(dashboard: dashboard),
@@ -80,6 +125,14 @@ class HomeScreen extends StatelessWidget {
                           .toList(),
                     ),
                   ),
+                if (dashboard.forecasts.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _ForecastCard(forecast: dashboard.forecasts.first),
+                ],
+                if (transactions.allTransactions.isNotEmpty) ...[
+                  const SizedBox(height: 30),
+                  _MonthlyInsights(dashboard: dashboard),
+                ],
                 const SizedBox(height: 30),
                 _SectionHeader(
                   eyebrow: 'TERKINI',
@@ -135,8 +188,14 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.month});
+  const _Header({
+    required this.month,
+    required this.dueCount,
+    required this.onNotificationsTap,
+  });
   final String month;
+  final int dueCount;
+  final VoidCallback onNotificationsTap;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -184,18 +243,275 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          width: 43,
-          height: 43,
-          decoration: BoxDecoration(
-            color: pundiLilac,
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: const Icon(
-            Icons.notifications_none_rounded,
-            color: pundiVioletDark,
+        InkWell(
+          onTap: onNotificationsTap,
+          borderRadius: BorderRadius.circular(15),
+          child: Container(
+            width: 43,
+            height: 43,
+            decoration: BoxDecoration(
+              color: dueCount > 0 ? pundiCoral : pundiLilac,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  dueCount > 0
+                      ? Icons.notifications_active_rounded
+                      : Icons.notifications_none_rounded,
+                  color: dueCount > 0 ? Colors.white : pundiVioletDark,
+                ),
+                if (dueCount > 0)
+                  Positioned(
+                    right: 5,
+                    top: 4,
+                    child: Container(
+                      width: 15,
+                      height: 15,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: pundiAmber,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$dueCount',
+                        style: const TextStyle(
+                          color: inkColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
+      ],
+    ),
+  );
+}
+
+class _DueRecurringCard extends StatelessWidget {
+  const _DueRecurringCard({
+    required this.rule,
+    required this.remaining,
+    required this.onRecord,
+    required this.onOpen,
+  });
+  final RecurringRuleModel rule;
+  final int remaining;
+  final VoidCallback onRecord;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: pundiLilac,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.event_repeat_rounded, color: pundiViolet),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Transaksi rutin menunggu',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  Text(
+                    '${rule.merchant ?? rule.category} · ${formatRupiah(rule.amount)}${remaining > 0 ? ' +$remaining lainnya' : ''}',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: onOpen,
+                child: const Text('Lihat semua'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton(
+                onPressed: onRecord,
+                child: const Text('Catat'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _BackupNudge extends StatelessWidget {
+  const _BackupNudge();
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: pundiAmber.withValues(alpha: .24),
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.backup_rounded, color: Color(0xFF8A5D00)),
+        SizedBox(width: 11),
+        Expanded(
+          child: Text(
+            'Data baru belum dicadangkan. Buka Atur untuk membuat backup JSON.',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ForecastCard extends StatelessWidget {
+  const _ForecastCard({required this.forecast});
+  final BudgetForecast forecast;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: pundiLilac,
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.auto_graph_rounded, color: pundiViolet),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              text: 'Prediksi: ',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+              children: [
+                TextSpan(
+                  text:
+                      'anggaran ${forecast.category} bisa habis sekitar ${formatDate(forecast.estimatedDate)}.',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MonthlyInsights extends StatelessWidget {
+  const _MonthlyInsights({required this.dashboard});
+  final DashboardProvider dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    final change = dashboard.monthChangePercent;
+    final biggest = dashboard.largestIncreaseCategory;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(
+          eyebrow: 'INSIGHT BULANAN',
+          title: 'Yang berubah',
+          trailing: 'offline',
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _InsightTile(
+                icon: change != null && change > 0
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded,
+                title: change == null
+                    ? 'Belum ada pembanding'
+                    : '${change.abs().toStringAsFixed(0)}% ${change >= 0 ? 'naik' : 'turun'}',
+                caption: 'vs bulan lalu',
+                color: change != null && change > 0 ? pundiCoral : successTeal,
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: _InsightTile(
+                icon: Icons.category_rounded,
+                title: biggest ?? 'Belum terlihat',
+                caption: 'kenaikan terbesar',
+                color: pundiViolet,
+              ),
+            ),
+          ],
+        ),
+        if (dashboard.unusualCategories.isNotEmpty) ...[
+          const SizedBox(height: 9),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFE4DA),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Text(
+              'Tidak biasa: ${dashboard.unusualCategories.join(', ')} naik setidaknya 50% dibanding bulan lalu.',
+              style: const TextStyle(
+                color: Color(0xFF702918),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _InsightTile extends StatelessWidget {
+  const _InsightTile({
+    required this.icon,
+    required this.title,
+    required this.caption,
+    required this.color,
+  });
+  final IconData icon;
+  final String title;
+  final String caption;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color),
+        const SizedBox(height: 10),
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        ),
+        Text(caption, style: const TextStyle(fontSize: 11)),
       ],
     ),
   );

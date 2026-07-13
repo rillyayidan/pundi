@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/app_shell.dart';
 import 'utils/constants.dart';
+import 'widgets/app_lock_gate.dart';
 
 class PundiApp extends StatelessWidget {
   const PundiApp({super.key});
@@ -13,7 +14,7 @@ class PundiApp extends StatelessWidget {
     themeMode: ThemeMode.system,
     theme: _theme(Brightness.light),
     darkTheme: _theme(Brightness.dark),
-    home: const AppShell(),
+    home: const AppLockGate(child: AppShell()),
   );
 
   ThemeData _theme(Brightness brightness) {
