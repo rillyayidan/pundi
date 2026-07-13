@@ -58,7 +58,7 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
           'Tidak ada teks yang terdeteksi. Coba foto dengan cahaya lebih terang.',
         );
       }
-      final parsed = _parser.parse(text);
+      final parsed = _parser.parse(text, sourceImagePath: image.path);
       if (mounted) {
         setState(() => _result = parsed);
       }
@@ -221,6 +221,41 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
                         : formatRupiah(_result!.amount!),
                     confidence: _result!.amountConfidence,
                   ),
+                  if (_result!.lineItems.isNotEmpty) ...[
+                    const Divider(height: 26),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${_result!.lineItems.length} item terdeteksi',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ..._result!.lineItems
+                        .take(5)
+                        .map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  formatRupiah(item.amount),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                  ],
                   const Divider(height: 26),
                   _ResultRow(
                     label: 'Merchant',

@@ -6,6 +6,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/app_features_provider.dart';
 import '../models/recurring_rule_model.dart';
+import '../models/savings_goal_model.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
@@ -13,6 +14,7 @@ import '../widgets/budget_progress_bar.dart';
 import '../widgets/transaction_tile.dart';
 import 'transaction_detail_screen.dart';
 import 'recurring_screen.dart';
+import 'savings_goals_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -128,6 +130,18 @@ class HomeScreen extends StatelessWidget {
                 if (dashboard.forecasts.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _ForecastCard(forecast: dashboard.forecasts.first),
+                ],
+                if (features.savingsGoals.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _SavingsGoalCard(
+                    goal: features.savingsGoals.first,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SavingsGoalsScreen(),
+                      ),
+                    ),
+                  ),
                 ],
                 if (transactions.allTransactions.isNotEmpty) ...[
                   const SizedBox(height: 30),
@@ -416,6 +430,62 @@ class _ForecastCard extends StatelessWidget {
   );
 }
 
+class _SavingsGoalCard extends StatelessWidget {
+  const _SavingsGoalCard({required this.goal, required this.onTap});
+  final SavingsGoalModel goal;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Color(goal.colorValue);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(Icons.savings_rounded, color: color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    goal.name,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                Text('${(goal.progress * 100).round()}%'),
+                const Icon(Icons.chevron_right_rounded),
+              ],
+            ),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(
+              value: goal.progress,
+              minHeight: 9,
+              borderRadius: BorderRadius.circular(99),
+              color: color,
+              backgroundColor: color.withValues(alpha: .12),
+            ),
+            const SizedBox(height: 7),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${formatRupiah(goal.currentAmount)} dari ${formatRupiah(goal.targetAmount)}',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MonthlyInsights extends StatelessWidget {
   const _MonthlyInsights({required this.dashboard});
   final DashboardProvider dashboard;
@@ -468,11 +538,26 @@ class _MonthlyInsights extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
             ),
             child: Text(
-              'Tidak biasa: ${dashboard.unusualCategories.join(', ')} naik setidaknya 50% dibanding bulan lalu.',
+              'Tidak biasa: ${dashboard.unusualCategories.join(', ')} diproyeksikan naik setidaknya 50% dari rata-rata 3 bulan.',
               style: const TextStyle(
                 color: Color(0xFF702918),
                 fontWeight: FontWeight.w700,
               ),
+            ),
+          ),
+        ],
+        if (dashboard.weekendExpenseShare >= .35) ...[
+          const SizedBox(height: 9),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: pundiAmber.withValues(alpha: .22),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Text(
+              '${(dashboard.weekendExpenseShare * 100).round()}% pengeluaran 90 hari terakhir terjadi saat akhir pekan.',
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
         ],

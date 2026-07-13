@@ -1,4 +1,5 @@
 import '../models/parsed_bill_model.dart';
+import 'category_suggester_service.dart';
 
 class BillParserService {
   static final _amountPattern = RegExp(
@@ -50,7 +51,7 @@ class BillParserService {
     'www.',
   ];
 
-  ParsedBillModel parse(String rawText) {
+  ParsedBillModel parse(String rawText, {String? sourceImagePath}) {
     final lines = rawText
         .split(RegExp(r'[\r\n]+'))
         .map((line) => line.replaceAll(RegExp(r'\s+'), ' ').trim())
@@ -60,6 +61,7 @@ class BillParserService {
     final amountResult = _extractAmount(lines);
     final merchantResult = _extractMerchant(lines);
     final dateResult = _extractDate(lines);
+    final lineItems = _extractLineItems(lines);
     return ParsedBillModel(
       amount: amountResult?.value,
       amountConfidence: amountResult?.confidence ?? ConfidenceLevel.low,
@@ -68,7 +70,44 @@ class BillParserService {
       date: dateResult?.value,
       dateConfidence: dateResult?.confidence ?? ConfidenceLevel.low,
       rawText: rawText,
+      lineItems: lineItems,
+      sourceImagePath: sourceImagePath,
     );
+  }
+
+  List<ReceiptLineItem> _extractLineItems(List<String> lines) {
+    final result = <ReceiptLineItem>[];
+    final suggester = CategorySuggesterService();
+    for (final line in lines) {
+      final lower = line.toLowerCase();
+      if (_totalKeywords.any(lower.contains) ||
+          _negativeAmountKeywords.any(lower.contains) ||
+          _datePattern.hasMatch(line) ||
+          _monthNamePattern.hasMatch(line)) {
+        continue;
+      }
+      final matches = _amountPattern.allMatches(line).toList();
+      if (matches.isEmpty) continue;
+      final match = matches.last;
+      final amount = _parseAmount(match.group(1)!);
+      if (amount == null || amount < 500 || amount > 100000000) continue;
+      final label = line
+          .substring(0, match.start)
+          .replaceAll(RegExp(r'\b(rp|idr)\b', caseSensitive: false), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      if (RegExp(r'[a-zA-Z]').allMatches(label).length < 2) continue;
+      if (_merchantNoise.any(lower.contains)) continue;
+      result.add(
+        ReceiptLineItem(
+          label: _titleCase(label),
+          amount: amount,
+          suggestedCategory: suggester.suggest(null, rawText: label),
+        ),
+      );
+      if (result.length == 20) break;
+    }
+    return result;
   }
 
   _Result<double>? _extractAmount(List<String> lines) {

@@ -39,12 +39,16 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
             _EditablePart(
               category: widget.initialCategory,
               amount: widget.total,
+              label: '',
             ),
           ]
         : widget.initialParts
               .map(
-                (part) =>
-                    _EditablePart(category: part.category, amount: part.amount),
+                (part) => _EditablePart(
+                  category: part.category,
+                  amount: part.amount,
+                  label: part.label,
+                ),
               )
               .toList();
   }
@@ -53,6 +57,7 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
   void dispose() {
     for (final part in _parts) {
       part.controller.dispose();
+      part.labelController.dispose();
     }
     super.dispose();
   }
@@ -61,7 +66,11 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
     final amount = _remaining > 0 ? _remaining : 0.0;
     setState(
       () => _parts.add(
-        _EditablePart(category: expenseCategories.first.name, amount: amount),
+        _EditablePart(
+          category: expenseCategories.first.name,
+          amount: amount,
+          label: '',
+        ),
       ),
     );
   }
@@ -69,6 +78,7 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
   void _removePart(int index) {
     final part = _parts.removeAt(index);
     part.controller.dispose();
+    part.labelController.dispose();
     setState(() {});
   }
 
@@ -99,6 +109,7 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
             (part) => SplitPartModel(
               amount: parseRupiahInput(part.controller.text)!,
               category: part.category,
+              label: part.labelController.text.trim(),
             ),
           )
           .toList(growable: false),
@@ -184,6 +195,14 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
                       child: Column(
                         children: [
                           TextFormField(
+                            controller: part.labelController,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Nama item (opsional)',
+                            ),
+                          ),
+                          const SizedBox(height: 9),
+                          TextFormField(
                             controller: part.controller,
                             keyboardType: TextInputType.number,
                             inputFormatters: [
@@ -252,11 +271,16 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
 }
 
 class _EditablePart {
-  _EditablePart({required this.category, required double amount})
-    : controller = TextEditingController(
-        text: amount <= 0 ? '' : amount.toStringAsFixed(0),
-      );
+  _EditablePart({
+    required this.category,
+    required double amount,
+    required String label,
+  }) : labelController = TextEditingController(text: label),
+       controller = TextEditingController(
+         text: amount <= 0 ? '' : amount.toStringAsFixed(0),
+       );
 
   String category;
   final TextEditingController controller;
+  final TextEditingController labelController;
 }

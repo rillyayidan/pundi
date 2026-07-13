@@ -1,12 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
+import '../database/database_helper.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/category_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
+import '../services/receipt_image_service.dart';
 import 'add_transaction_screen.dart';
 
 class TransactionDetailScreen extends StatelessWidget {
@@ -22,7 +27,9 @@ class TransactionDetailScreen extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus transaksi?'),
-        content: const Text('Data ini akan dihapus permanen dari Pundi.'),
+        content: const Text(
+          'Transaksi dipindahkan ke Sampah dan bisa dipulihkan selama 30 hari.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -44,9 +51,37 @@ class TransactionDetailScreen extends StatelessWidget {
       return;
     }
     await context.read<DashboardProvider>().load();
-    if (context.mounted) {
-      Navigator.pop(context, true);
-    }
+    if (!context.mounted) return;
+    final provider = context.read<TransactionProvider>();
+    final dashboard = context.read<DashboardProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context, true);
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Transaksi dipindahkan ke Sampah.'),
+        action: SnackBarAction(
+          label: 'Urungkan',
+          onPressed: () async {
+            await provider.restore(transaction.id!);
+            await dashboard.load();
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _removeReceiptImage(
+    BuildContext context,
+    TransactionModel transaction,
+  ) async {
+    final path = transaction.receiptImagePath;
+    if (path == null) return;
+    await context.read<TransactionProvider>().update(
+      transaction.copyWith(clearReceiptImage: true),
+    );
+    final references = await DatabaseHelper.instance
+        .countTransactionsUsingReceiptImage(path);
+    if (references == 0) await ReceiptImageService().delete(path);
   }
 
   @override
@@ -54,6 +89,7 @@ class TransactionDetailScreen extends StatelessWidget {
     final transaction = context.watch<TransactionProvider>().findById(
       transactionId,
     );
+    context.watch<CategoryProvider>();
     if (transaction == null) {
       return const Scaffold(
         body: Center(child: Text('Transaksi tidak ditemukan')),
@@ -184,6 +220,61 @@ class TransactionDetailScreen extends StatelessWidget {
                   child: SelectableText(transaction.receiptText!),
                 ),
               ],
+            ),
+          ],
+          if (transaction.receiptImagePath?.isNotEmpty == true &&
+              File(transaction.receiptImagePath!).existsSync()) ...[
+            const SizedBox(height: 16),
+            Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => Dialog(
+                        child: InteractiveViewer(
+                          child: Image.file(
+                            File(transaction.receiptImagePath!),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 10,
+                      child: Image.file(
+                        File(transaction.receiptImagePath!),
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Foto struk tersimpan lokal',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              _removeReceiptImage(context, transaction),
+                          child: const Text('Hapus foto'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: 24),

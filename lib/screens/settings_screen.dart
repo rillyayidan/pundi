@@ -4,16 +4,22 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../database/database_helper.dart';
+import '../models/transaction_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/app_features_provider.dart';
+import '../providers/category_provider.dart';
 import '../services/backup_service.dart';
 import '../services/export_service.dart';
+import '../services/import_service.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/budget_progress_bar.dart';
 import '../utils/date_formatter.dart';
 import 'recurring_screen.dart';
+import 'custom_categories_screen.dart';
+import 'savings_goals_screen.dart';
+import 'trash_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -84,6 +90,7 @@ class SettingsScreen extends StatelessWidget {
     final dashboard = context.watch<DashboardProvider>();
     final transactions = context.watch<TransactionProvider>();
     final features = context.watch<AppFeaturesProvider>();
+    final categoryProvider = context.watch<CategoryProvider>();
     final backup = BackupService(DatabaseHelper.instance);
     return Scaffold(
       body: ListView(
@@ -152,7 +159,8 @@ class SettingsScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               child: Column(
-                children: expenseCategories
+                children: categoryProvider
+                    .forType(TransactionType.expense)
                     .map(
                       (category) => BudgetProgressBar(
                         category: category.name,
@@ -176,6 +184,42 @@ class SettingsScreen extends StatelessWidget {
           Card(
             child: Column(
               children: [
+                ListTile(
+                  leading: const _SettingsIcon(icon: Icons.category_rounded),
+                  title: const Text(
+                    'Kategori khusus',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    '${categoryProvider.customCategories.length} kategori buatanmu',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CustomCategoriesScreen(),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, indent: 72),
+                ListTile(
+                  leading: const _SettingsIcon(icon: Icons.savings_rounded),
+                  title: const Text(
+                    'Target tabungan',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    '${features.savingsGoals.length} target aktif',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SavingsGoalsScreen(),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, indent: 72),
                 ListTile(
                   leading: const _SettingsIcon(
                     icon: Icons.event_repeat_rounded,
@@ -307,6 +351,53 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1, indent: 72),
                 ListTile(
+                  leading: const _SettingsIcon(
+                    icon: Icons.file_download_outlined,
+                  ),
+                  title: const Text(
+                    'Impor CSV',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text('Tambahkan transaksi dari spreadsheet'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    final picked = await FilePicker.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['csv'],
+                    );
+                    final path = picked?.files.single.path;
+                    if (path == null || !context.mounted) return;
+                    await _run(context, () async {
+                      final imported = await ImportService().parseCsv(path);
+                      if (!context.mounted) return;
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('Impor ${imported.length} transaksi?'),
+                          content: const Text(
+                            'Data CSV akan ditambahkan tanpa menghapus transaksi yang sudah ada.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Batal'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Impor'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed != true) return;
+                      await transactions.addAll(imported);
+                      await dashboard.load();
+                      await features.refresh();
+                    }, 'CSV berhasil diimpor.');
+                  },
+                ),
+                const Divider(height: 1, indent: 72),
+                ListTile(
                   leading: const _SettingsIcon(icon: Icons.backup_rounded),
                   title: const Text(
                     'Cadangkan ke JSON',
@@ -380,6 +471,24 @@ class SettingsScreen extends StatelessWidget {
                     }, 'Cadangan berhasil dipulihkan.');
                   },
                 ),
+                const Divider(height: 1, indent: 72),
+                ListTile(
+                  leading: const _SettingsIcon(
+                    icon: Icons.delete_sweep_outlined,
+                  ),
+                  title: const Text(
+                    'Sampah',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    '${transactions.trashedTransactions.length} transaksi · terhapus otomatis 30 hari',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TrashScreen()),
+                  ),
+                ),
               ],
             ),
           ),
@@ -392,7 +501,7 @@ class SettingsScreen extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
-                'Data keuangan dan OCR tetap berada di perangkat. Tidak ada akun atau sinkronisasi cloud.',
+                'Database SQLCipher terenkripsi; data keuangan dan OCR tetap berada di perangkat.',
               ),
             ),
           ),
