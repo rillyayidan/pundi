@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../database/database_helper.dart';
 import '../models/recurring_rule_model.dart';
+import '../models/savings_goal_model.dart';
+import '../models/transaction_model.dart';
 import '../services/notification_service.dart';
 import '../services/security_service.dart';
 
@@ -18,6 +20,7 @@ class AppFeaturesProvider extends ChangeNotifier {
   final SecurityService _security;
 
   List<RecurringRuleModel> recurringRules = [];
+  List<SavingsGoalModel> savingsGoals = [];
   bool initialized = false;
   bool lockEnabled = false;
   bool locked = false;
@@ -27,6 +30,7 @@ class AppFeaturesProvider extends ChangeNotifier {
   int transactionCountAtBackup = 0;
   int currentTransactionCount = 0;
   String? error;
+  bool onboardingSeen = false;
 
   List<RecurringRuleModel> get dueRules {
     final endToday = DateTime.now().add(const Duration(days: 1));
@@ -49,8 +53,13 @@ class AppFeaturesProvider extends ChangeNotifier {
       lockEnabled = await _database.getSetting('app_lock_enabled') == 'true';
       notificationsEnabled =
           await _database.getSetting('notifications_enabled') == 'true';
+      onboardingSeen = await _database.getSetting('onboarding_seen') == 'true';
       locked = lockEnabled;
       await refresh();
+      if (!onboardingSeen && currentTransactionCount > 0) {
+        onboardingSeen = true;
+        await _database.setSetting('onboarding_seen', 'true');
+      }
     } catch (caught) {
       error = caught.toString();
     } finally {
@@ -61,6 +70,7 @@ class AppFeaturesProvider extends ChangeNotifier {
 
   Future<void> refresh() async {
     recurringRules = await _database.getRecurringRules();
+    savingsGoals = await _database.getSavingsGoals();
     currentTransactionCount = await _database.getTransactionCount();
     final backupValue = await _database.getSetting('last_backup_at');
     lastBackupAt = backupValue == null ? null : DateTime.tryParse(backupValue);
@@ -120,6 +130,69 @@ class AppFeaturesProvider extends ChangeNotifier {
   Future<void> saveRecurringRule(RecurringRuleModel rule) async {
     await _database.saveRecurringRule(rule);
     await refresh();
+  }
+
+  Future<void> saveSavingsGoal(SavingsGoalModel goal) async {
+    await _database.saveSavingsGoal(goal);
+    await refresh();
+  }
+
+  Future<void> deleteSavingsGoal(SavingsGoalModel goal) async {
+    if (goal.id == null) return;
+    await _database.deleteSavingsGoal(goal.id!);
+    await refresh();
+  }
+
+  Future<void> addGoalContribution(SavingsGoalModel goal, double amount) async {
+    if (amount <= 0) return;
+    await _database.saveSavingsGoal(
+      goal.copyWith(currentAmount: goal.currentAmount + amount),
+    );
+    await refresh();
+  }
+
+  Future<void> finishOnboarding({bool addDemoData = false}) async {
+    if (addDemoData && await _database.getTransactionCount() == 0) {
+      final now = DateTime.now();
+      await _database.insertTransactions([
+        TransactionModel(
+          type: TransactionType.income,
+          amount: 5500000,
+          category: 'Gaji',
+          date: DateTime(now.year, now.month, 1, 9),
+          merchant: 'Gaji bulanan',
+          note: 'Data contoh — bisa dihapus kapan saja',
+        ),
+        TransactionModel(
+          type: TransactionType.expense,
+          amount: 850000,
+          category: 'Tagihan',
+          date: DateTime(now.year, now.month, 2, 12),
+          merchant: 'Kos',
+          note: 'Data contoh',
+        ),
+        TransactionModel(
+          type: TransactionType.expense,
+          amount: 185000,
+          category: 'Makanan',
+          date: now.subtract(const Duration(days: 2)),
+          merchant: 'Belanja mingguan',
+          note: 'Data contoh',
+        ),
+        TransactionModel(
+          type: TransactionType.expense,
+          amount: 76000,
+          category: 'Transportasi',
+          date: now.subtract(const Duration(days: 1)),
+          merchant: 'Transport',
+          note: 'Data contoh',
+        ),
+      ]);
+    }
+    onboardingSeen = true;
+    await _database.setSetting('onboarding_seen', 'true');
+    await refresh();
+    notifyListeners();
   }
 
   Future<void> deleteRecurringRule(RecurringRuleModel rule) async {

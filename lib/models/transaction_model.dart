@@ -18,6 +18,8 @@ class TransactionModel {
     this.note = '',
     this.merchant,
     this.receiptText,
+    this.receiptImagePath,
+    this.deletedAt,
     this.createdAt,
   });
 
@@ -29,6 +31,8 @@ class TransactionModel {
   final String note;
   final String? merchant;
   final String? receiptText;
+  final String? receiptImagePath;
+  final DateTime? deletedAt;
   final DateTime? createdAt;
 
   bool get isExpense => type == TransactionType.expense;
@@ -42,6 +46,10 @@ class TransactionModel {
     String? note,
     String? merchant,
     String? receiptText,
+    String? receiptImagePath,
+    bool clearReceiptImage = false,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
     DateTime? createdAt,
   }) => TransactionModel(
     id: id ?? this.id,
@@ -52,6 +60,10 @@ class TransactionModel {
     note: note ?? this.note,
     merchant: merchant ?? this.merchant,
     receiptText: receiptText ?? this.receiptText,
+    receiptImagePath: clearReceiptImage
+        ? null
+        : receiptImagePath ?? this.receiptImagePath,
+    deletedAt: clearDeletedAt ? null : deletedAt ?? this.deletedAt,
     createdAt: createdAt ?? this.createdAt,
   );
 
@@ -64,6 +76,8 @@ class TransactionModel {
     'note': note,
     'merchant': merchant,
     'receipt_text': receiptText,
+    'receipt_image_path': receiptImagePath,
+    'deleted_at': deletedAt?.toIso8601String(),
     'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
   };
 
@@ -77,6 +91,10 @@ class TransactionModel {
         note: map['note'] as String? ?? '',
         merchant: map['merchant'] as String?,
         receiptText: map['receipt_text'] as String?,
+        receiptImagePath: map['receipt_image_path'] as String?,
+        deletedAt: map['deleted_at'] == null
+            ? null
+            : DateTime.parse(map['deleted_at']! as String),
         createdAt: map['created_at'] == null
             ? null
             : DateTime.parse(map['created_at']! as String),

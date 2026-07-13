@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
+import '../providers/category_provider.dart';
 import '../utils/constants.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/transaction_tile.dart';
@@ -79,6 +80,7 @@ class _HistoryScreenState extends State<HistoryScreen>
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TransactionProvider>();
+    context.watch<CategoryProvider>();
     final items = provider.transactions;
     final categories = [...expenseCategories, ...incomeCategories];
     return Scaffold(

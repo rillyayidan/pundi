@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 
 import '../database/database_helper.dart';
 import '../models/transaction_model.dart';
+import '../services/receipt_image_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   TransactionProvider(this._database);
 
   final DatabaseHelper _database;
   final List<TransactionModel> _allTransactions = [];
+  final List<TransactionModel> _trashedTransactions = [];
   bool _loading = false;
   String? _error;
   DateTime? _filterFrom;
@@ -17,6 +19,8 @@ class TransactionProvider extends ChangeNotifier {
 
   List<TransactionModel> get allTransactions =>
       List.unmodifiable(_allTransactions);
+  List<TransactionModel> get trashedTransactions =>
+      List.unmodifiable(_trashedTransactions);
   List<TransactionModel> get transactions => List.unmodifiable(
     _allTransactions.where((item) {
       if (_filterFrom != null && item.date.isBefore(_filterFrom!)) return false;
@@ -74,9 +78,14 @@ class TransactionProvider extends ChangeNotifier {
     }
     await _run(() async {
       final result = await _database.getTransactions();
+      await _database.purgeExpiredTrash();
+      final trash = await _database.getTrash();
       _allTransactions
         ..clear()
         ..addAll(result);
+      _trashedTransactions
+        ..clear()
+        ..addAll(trash);
     });
   }
 
@@ -131,7 +140,26 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   Future<void> delete(int id) async {
-    await _database.deleteTransaction(id);
+    await _database.softDeleteTransaction(id);
+    await load(keepFilters: true);
+  }
+
+  Future<void> restore(int id) async {
+    await _database.restoreTransaction(id);
+    await load(keepFilters: true);
+  }
+
+  Future<void> permanentlyDelete(int id) async {
+    TransactionModel? item;
+    for (final transaction in _trashedTransactions) {
+      if (transaction.id == id) item = transaction;
+    }
+    final imagePath = item?.receiptImagePath;
+    await _database.permanentlyDeleteTransaction(id);
+    if (imagePath != null &&
+        await _database.countTransactionsUsingReceiptImage(imagePath) == 0) {
+      await ReceiptImageService().delete(imagePath);
+    }
     await load(keepFilters: true);
   }
 

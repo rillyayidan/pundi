@@ -9,8 +9,10 @@ class DashboardProvider extends ChangeNotifier {
   final DatabaseHelper _database;
   Map<String, double> expensesByCategory = {};
   Map<String, double> previousExpensesByCategory = {};
+  List<Map<String, double>> historicalCategoryMonths = [];
   Map<String, double> budgets = {};
   List<MonthlyTotal> monthlyTotals = [];
+  double weekendExpenseShare = 0;
   bool loading = false;
   String? error;
 
@@ -31,11 +33,26 @@ class DashboardProvider extends ChangeNotifier {
           from: DateTime(now.year, now.month - 1),
           toExclusive: DateTime(now.year, now.month),
         ),
+        _database.getExpenseByCategory(
+          from: DateTime(now.year, now.month - 2),
+          toExclusive: DateTime(now.year, now.month - 1),
+        ),
+        _database.getExpenseByCategory(
+          from: DateTime(now.year, now.month - 3),
+          toExclusive: DateTime(now.year, now.month - 2),
+        ),
+        _database.getWeekendExpenseShare(),
       ]);
       expensesByCategory = results[0] as Map<String, double>;
       budgets = results[1] as Map<String, double>;
       monthlyTotals = results[2] as List<MonthlyTotal>;
       previousExpensesByCategory = results[3] as Map<String, double>;
+      historicalCategoryMonths = [
+        results[3] as Map<String, double>,
+        results[4] as Map<String, double>,
+        results[5] as Map<String, double>,
+      ];
+      weekendExpenseShare = results[6] as double;
     } catch (caught) {
       error = caught.toString();
       rethrow;
@@ -90,8 +107,11 @@ class DashboardProvider extends ChangeNotifier {
 
   List<String> get unusualCategories => expensesByCategory.entries
       .where((entry) {
-        final previous = previousExpensesByCategory[entry.key] ?? 0;
-        return previous > 0 && entry.value >= previous * 1.5;
+        final baseline = _historicalAverage(entry.key);
+        final now = DateTime.now();
+        final lastDay = DateTime(now.year, now.month + 1, 0).day;
+        final projected = entry.value / now.day * lastDay;
+        return baseline > 0 && projected >= baseline * 1.5;
       })
       .map((entry) => entry.key)
       .toList(growable: false);
@@ -101,17 +121,34 @@ class DashboardProvider extends ChangeNotifier {
     final spent = spentFor(category);
     if (limit <= 0 || spent <= 0 || spent >= limit) return null;
     final now = DateTime.now();
-    final elapsedDays = now.day.toDouble();
-    final averagePerDay = spent / elapsedDays;
-    if (averagePerDay <= 0) return null;
-    final projectedDay = (limit / averagePerDay).ceil();
     final lastDay = DateTime(now.year, now.month + 1, 0).day;
-    if (projectedDay > lastDay) return null;
+    final currentDaily = spent / now.day;
+    final historical = _historicalAverage(category);
+    final historicalDaily = historical <= 0
+        ? currentDaily
+        : historical / lastDay;
+    final averagePerDay = currentDaily * .55 + historicalDaily * .45;
+    if (averagePerDay <= 0) return null;
+    final daysRemaining = ((limit - spent) / averagePerDay).ceil();
+    final estimatedDate = DateTime(
+      now.year,
+      now.month,
+      now.day + daysRemaining,
+    );
+    if (estimatedDate.month != now.month) return null;
     return BudgetForecast(
       category: category,
-      estimatedDate: DateTime(now.year, now.month, projectedDay),
+      estimatedDate: estimatedDate,
       averagePerDay: averagePerDay,
     );
+  }
+
+  double _historicalAverage(String category) {
+    if (historicalCategoryMonths.isEmpty) return 0;
+    return historicalCategoryMonths
+            .map((month) => month[category] ?? 0)
+            .fold<double>(0, (sum, value) => sum + value) /
+        historicalCategoryMonths.length;
   }
 
   List<BudgetForecast> get forecasts =>

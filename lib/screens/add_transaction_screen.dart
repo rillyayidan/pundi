@@ -8,6 +8,7 @@ import '../models/split_part_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/category_suggester_service.dart';
+import '../services/receipt_image_service.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
@@ -97,6 +98,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     setState(() => _saving = true);
     try {
       final amount = parseRupiahInput(_amountController.text)!;
+      final receiptImagePath =
+          widget.transaction?.receiptImagePath ??
+          await ReceiptImageService().persist(
+            widget.parsedBill?.sourceImagePath,
+          );
+      if (!mounted) return;
       final splitParts = _splitParts;
       if (splitParts != null &&
           (splitParts.fold<double>(0, (sum, part) => sum + part.amount) -
@@ -119,6 +126,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             : _merchantController.text.trim(),
         receiptText:
             widget.parsedBill?.rawText ?? widget.transaction?.receiptText,
+        receiptImagePath: receiptImagePath,
         createdAt: widget.transaction?.createdAt,
       );
       final provider = context.read<TransactionProvider>();
@@ -133,9 +141,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   amount: part.amount,
                   category: part.category,
                   date: _date,
-                  note: _noteController.text.trim(),
+                  note: [
+                    if (part.label.isNotEmpty) part.label,
+                    if (_noteController.text.trim().isNotEmpty)
+                      _noteController.text.trim(),
+                  ].join(' — '),
                   merchant: transaction.merchant,
                   receiptText: transaction.receiptText,
+                  receiptImagePath: receiptImagePath,
                 ),
               )
               .toList(growable: false),
@@ -212,13 +225,25 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       );
       return;
     }
+    final parsedItems = widget.parsedBill?.lineItems ?? const [];
+    final initialParts =
+        _splitParts ??
+        parsedItems
+            .map(
+              (item) => SplitPartModel(
+                amount: item.amount,
+                category: item.suggestedCategory,
+                label: item.label,
+              ),
+            )
+            .toList(growable: false);
     final result = await Navigator.push<List<SplitPartModel>>(
       context,
       MaterialPageRoute(
         builder: (_) => SplitReceiptScreen(
           total: total,
           initialCategory: _category,
-          initialParts: _splitParts ?? const [],
+          initialParts: initialParts,
         ),
       ),
     );
@@ -419,7 +444,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                           ),
                           Text(
                             _splitParts == null
-                                ? 'Cocok untuk satu struk dengan isi campuran'
+                                ? widget.parsedBill?.lineItems.isNotEmpty ==
+                                          true
+                                      ? '${widget.parsedBill!.lineItems.length} item OCR siap diperiksa'
+                                      : 'Cocok untuk satu struk dengan isi campuran'
                                 : 'Ketuk untuk memeriksa pembagian',
                           ),
                         ],

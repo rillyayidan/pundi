@@ -1,8 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
+import '../models/category_model.dart';
+import '../models/savings_goal_model.dart';
 import '../models/transaction_model.dart';
 import '../models/recurring_rule_model.dart';
 import 'db_constants.dart';
@@ -11,19 +16,77 @@ class DatabaseHelper {
   DatabaseHelper._();
 
   static final DatabaseHelper instance = DatabaseHelper._();
+  static const _secureStorage = FlutterSecureStorage();
   Database? _database;
 
   Future<Database> get database async => _database ??= await _open();
 
   Future<Database> _open() async {
     final root = await getDatabasesPath();
+    final path = p.join(root, DbConstants.databaseName);
+    var key = await _secureStorage.read(key: 'pundi_database_key');
+    if (key == null) {
+      final random = Random.secure();
+      key = base64UrlEncode(List.generate(32, (_) => random.nextInt(256)));
+      await _secureStorage.write(key: 'pundi_database_key', value: key);
+    }
+    final encrypted =
+        await _secureStorage.read(key: 'pundi_database_encrypted') == 'true';
+    if (await File(path).exists() && !encrypted) {
+      await _encryptExistingDatabase(path, key);
+    }
+    await _secureStorage.write(key: 'pundi_database_encrypted', value: 'true');
     return openDatabase(
-      p.join(root, DbConstants.databaseName),
+      path,
+      password: key,
       version: DbConstants.databaseVersion,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _encryptExistingDatabase(String path, String key) async {
+    final tempPath = '$path.encrypted';
+    final tempFile = File(tempPath);
+    if (await tempFile.exists()) await tempFile.delete();
+    final plain = await openDatabase(path, singleInstance: false);
+    try {
+      final escapedPath = tempPath.replaceAll("'", "''");
+      final escapedKey = key.replaceAll("'", "''");
+      await plain.execute(
+        "ATTACH DATABASE '$escapedPath' AS encrypted KEY '$escapedKey'",
+      );
+      await plain.rawQuery("SELECT sqlcipher_export('encrypted')");
+      final version = await plain.getVersion();
+      await plain.execute('PRAGMA encrypted.user_version = $version');
+      await plain.execute('DETACH DATABASE encrypted');
+    } finally {
+      await plain.close();
+    }
+    for (final suffix in ['-wal', '-shm']) {
+      final sidecar = File('$path$suffix');
+      if (await sidecar.exists()) await sidecar.delete();
+    }
+    final backupPath = '$path.plaintext-backup';
+    final backupFile = File(backupPath);
+    if (await backupFile.exists()) await backupFile.delete();
+    await File(path).rename(backupPath);
+    try {
+      await tempFile.rename(path);
+      final check = await openDatabase(
+        path,
+        password: key,
+        singleInstance: false,
+      );
+      await check.rawQuery('SELECT count(*) FROM sqlite_master');
+      await check.close();
+      await backupFile.delete();
+    } catch (_) {
+      if (await File(path).exists()) await File(path).delete();
+      await backupFile.rename(path);
+      rethrow;
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -37,6 +100,8 @@ class DatabaseHelper {
         note TEXT NOT NULL DEFAULT '',
         merchant TEXT,
         receipt_text TEXT,
+        receipt_image_path TEXT,
+        deleted_at TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -46,6 +111,7 @@ class DatabaseHelper {
     ''');
     await _createBudgetsTable(db);
     await _createFeatureTables(db);
+    await _createIterationTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -54,6 +120,15 @@ class DatabaseHelper {
     }
     if (oldVersion < 3) {
       await _createFeatureTables(db);
+    }
+    if (oldVersion < 4) {
+      await db.execute(
+        'ALTER TABLE ${DbConstants.transactions} ADD COLUMN receipt_image_path TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE ${DbConstants.transactions} ADD COLUMN deleted_at TEXT',
+      );
+      await _createIterationTables(db);
     }
   }
 
@@ -102,6 +177,34 @@ class DatabaseHelper {
     ''');
   }
 
+  Future<void> _createIterationTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DbConstants.customCategories} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        icon_code INTEGER NOT NULL,
+        color_value INTEGER NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DbConstants.savingsGoals} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        target_amount REAL NOT NULL CHECK(target_amount > 0),
+        current_amount REAL NOT NULL DEFAULT 0 CHECK(current_amount >= 0),
+        target_date TEXT NOT NULL,
+        color_value INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_transactions_deleted
+      ON ${DbConstants.transactions}(deleted_at, date DESC)
+    ''');
+  }
+
   Future<int> insertTransaction(TransactionModel transaction) async {
     final db = await database;
     return db.insert(
@@ -138,12 +241,52 @@ class DatabaseHelper {
     );
   }
 
-  Future<int> deleteTransaction(int id) async {
+  Future<int> softDeleteTransaction(int id) async {
+    final db = await database;
+    return db.update(
+      DbConstants.transactions,
+      {'deleted_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> restoreTransaction(int id) async {
+    final db = await database;
+    return db.update(
+      DbConstants.transactions,
+      {'deleted_at': null},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> permanentlyDeleteTransaction(int id) async {
     final db = await database;
     return db.delete(
       DbConstants.transactions,
-      where: 'id = ?',
+      where: 'id = ? AND deleted_at IS NOT NULL',
       whereArgs: [id],
+    );
+  }
+
+  Future<List<TransactionModel>> getTrash() async {
+    final db = await database;
+    final rows = await db.query(
+      DbConstants.transactions,
+      where: 'deleted_at IS NOT NULL',
+      orderBy: 'deleted_at DESC',
+    );
+    return rows.map(TransactionModel.fromMap).toList(growable: false);
+  }
+
+  Future<int> purgeExpiredTrash() async {
+    final db = await database;
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    return db.delete(
+      DbConstants.transactions,
+      where: 'deleted_at IS NOT NULL AND deleted_at < ?',
+      whereArgs: [cutoff.toIso8601String()],
     );
   }
 
@@ -153,7 +296,7 @@ class DatabaseHelper {
     String? category,
   }) async {
     final db = await database;
-    final conditions = <String>[];
+    final conditions = <String>['deleted_at IS NULL'];
     final arguments = <Object?>[];
     if (from != null) {
       conditions.add('date >= ?');
@@ -169,7 +312,7 @@ class DatabaseHelper {
     }
     final rows = await db.query(
       DbConstants.transactions,
-      where: conditions.isEmpty ? null : conditions.join(' AND '),
+      where: conditions.join(' AND '),
       whereArgs: arguments.isEmpty ? null : arguments,
       orderBy: 'date DESC, id DESC',
     );
@@ -185,7 +328,7 @@ class DatabaseHelper {
       '''
       SELECT category, SUM(amount) AS total
       FROM ${DbConstants.transactions}
-      WHERE type = 'expense' AND date >= ? AND date < ?
+      WHERE type = 'expense' AND deleted_at IS NULL AND date >= ? AND date < ?
       GROUP BY category
       ORDER BY total DESC
     ''',
@@ -207,7 +350,7 @@ class DatabaseHelper {
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expense
       FROM ${DbConstants.transactions}
-      WHERE date >= ?
+      WHERE deleted_at IS NULL AND date >= ?
       GROUP BY substr(date, 1, 7)
       ORDER BY month ASC
     ''',
@@ -227,6 +370,24 @@ class DatabaseHelper {
     });
   }
 
+  Future<double> getWeekendExpenseShare({int days = 90}) async {
+    final db = await database;
+    final from = DateTime.now().subtract(Duration(days: days));
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        SUM(amount) AS total,
+        SUM(CASE WHEN strftime('%w', date) IN ('0', '6') THEN amount ELSE 0 END) AS weekend
+      FROM ${DbConstants.transactions}
+      WHERE type = 'expense' AND deleted_at IS NULL AND date >= ?
+      ''',
+      [from.toIso8601String()],
+    );
+    final total = (rows.first['total'] as num?)?.toDouble() ?? 0;
+    final weekend = (rows.first['weekend'] as num?)?.toDouble() ?? 0;
+    return total <= 0 ? 0 : weekend / total;
+  }
+
   Future<Map<String, double>> getBudgets() async {
     final db = await database;
     final rows = await db.query(DbConstants.budgets);
@@ -243,6 +404,69 @@ class DatabaseHelper {
       'monthly_limit': monthlyLimit,
       'updated_at': DateTime.now().toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<CategoryModel>> getCustomCategories() async {
+    final db = await database;
+    final rows = await db.query(
+      DbConstants.customCategories,
+      orderBy: 'type, name COLLATE NOCASE',
+    );
+    return rows.map(CategoryModel.fromMap).toList(growable: false);
+  }
+
+  Future<int> saveCustomCategory(CategoryModel category) async {
+    final db = await database;
+    if (category.id == null) {
+      return db.insert(
+        DbConstants.customCategories,
+        category.toMap(includeId: false),
+      );
+    }
+    await db.update(
+      DbConstants.customCategories,
+      category.toMap(includeId: false),
+      where: 'id = ?',
+      whereArgs: [category.id],
+    );
+    return category.id!;
+  }
+
+  Future<void> deleteCustomCategory(int id) async {
+    final db = await database;
+    await db.delete(
+      DbConstants.customCategories,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<SavingsGoalModel>> getSavingsGoals() async {
+    final db = await database;
+    final rows = await db.query(
+      DbConstants.savingsGoals,
+      orderBy: 'target_date ASC',
+    );
+    return rows.map(SavingsGoalModel.fromMap).toList(growable: false);
+  }
+
+  Future<int> saveSavingsGoal(SavingsGoalModel goal) async {
+    final db = await database;
+    if (goal.id == null) {
+      return db.insert(DbConstants.savingsGoals, goal.toMap(includeId: false));
+    }
+    await db.update(
+      DbConstants.savingsGoals,
+      goal.toMap(includeId: false),
+      where: 'id = ?',
+      whereArgs: [goal.id],
+    );
+    return goal.id!;
+  }
+
+  Future<void> deleteSavingsGoal(int id) async {
+    final db = await database;
+    await db.delete(DbConstants.savingsGoals, where: 'id = ?', whereArgs: [id]);
   }
 
   String _merchantKey(String merchant) => merchant
@@ -346,27 +570,43 @@ class DatabaseHelper {
   Future<int> getTransactionCount() async {
     final db = await database;
     final result = Sqflite.firstIntValue(
-      await db.rawQuery('SELECT COUNT(*) FROM ${DbConstants.transactions}'),
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM ${DbConstants.transactions} WHERE deleted_at IS NULL',
+      ),
     );
     return result ?? 0;
+  }
+
+  Future<int> countTransactionsUsingReceiptImage(String path) async {
+    final db = await database;
+    return Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM ${DbConstants.transactions} WHERE receipt_image_path = ?',
+            [path],
+          ),
+        ) ??
+        0;
   }
 
   Future<Map<String, Object?>> createBackup() async {
     final db = await database;
     return {
       'format': 'pundi-backup',
-      'version': 2,
+      'version': 3,
       'exported_at': DateTime.now().toUtc().toIso8601String(),
       'transactions': await db.query(DbConstants.transactions),
       'budgets': await db.query(DbConstants.budgets),
       'merchant_rules': await db.query(DbConstants.merchantRules),
       'recurring_rules': await db.query(DbConstants.recurringRules),
+      'custom_categories': await db.query(DbConstants.customCategories),
+      'savings_goals': await db.query(DbConstants.savingsGoals),
     };
   }
 
   Future<void> restoreBackup(Map<String, Object?> backup) async {
     final version = backup['version'];
-    if (backup['format'] != 'pundi-backup' || (version != 1 && version != 2)) {
+    if (backup['format'] != 'pundi-backup' ||
+        (version != 1 && version != 2 && version != 3)) {
       throw const FormatException('Format cadangan Pundi tidak dikenali.');
     }
     final transactions = backup['transactions'];
@@ -379,7 +619,7 @@ class DatabaseHelper {
     await db.transaction((txn) async {
       await txn.delete(DbConstants.transactions);
       await txn.delete(DbConstants.budgets);
-      if (version == 2) {
+      if (version == 2 || version == 3) {
         await txn.delete(DbConstants.merchantRules);
         await txn.delete(DbConstants.recurringRules);
       }
@@ -398,7 +638,7 @@ class DatabaseHelper {
         final map = jsonDecode(jsonEncode(item)) as Map<String, Object?>;
         await txn.insert(DbConstants.budgets, map);
       }
-      if (version == 2) {
+      if (version == 2 || version == 3) {
         await _restoreRows(
           txn,
           DbConstants.merchantRules,
@@ -408,6 +648,20 @@ class DatabaseHelper {
           txn,
           DbConstants.recurringRules,
           backup['recurring_rules'],
+        );
+      }
+      if (version == 3) {
+        await txn.delete(DbConstants.customCategories);
+        await txn.delete(DbConstants.savingsGoals);
+        await _restoreRows(
+          txn,
+          DbConstants.customCategories,
+          backup['custom_categories'],
+        );
+        await _restoreRows(
+          txn,
+          DbConstants.savingsGoals,
+          backup['savings_goals'],
         );
       }
     });

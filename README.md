@@ -10,13 +10,18 @@ Pundi adalah aplikasi pencatat keuangan Flutter yang sepenuhnya offline. Penggun
 - Saran kategori berbasis kata kunci merchant dan teks struk.
 - Smart merchant memory: koreksi kategori merchant dipakai kembali secara lokal.
 - Transaksi mingguan/bulanan berulang dengan konfirmasi, lewati, edit, dan pengingat lokal.
-- Split receipt ke beberapa kategori dengan validasi jumlah bagian terhadap total.
+- Kategori khusus dengan pilihan ikon, warna, dan tipe transaksi.
+- OCR line-item dan split receipt ke beberapa kategori dengan validasi jumlah terhadap total.
+- Lampiran foto struk lokal yang dapat diperbesar atau dilepas.
 - Pencarian riwayat berdasarkan merchant, catatan, kategori, atau nominal.
 - Anggaran per kategori dengan peringatan eksplisit saat batas bulanan terlewati.
-- Prediksi tanggal anggaran habis dan insight perbandingan dengan bulan sebelumnya.
+- Prediksi anggaran berbasis bulan berjalan dan rata-rata 3 bulan terakhir.
+- Target tabungan, saran setoran bulanan, dan pencatatan progres.
+- Sampah transaksi 30 hari, pemulihan, hapus permanen, serta Undo.
 - Donut chart kategori dan arus kas dengan rentang 7 hari, bulan berjalan, atau tanggal kustom.
-- Ekspor transaksi CSV serta backup/restore penuh dalam JSON.
+- Ekspor dan impor CSV serta backup/restore penuh dalam JSON.
 - Pengingat backup berdasarkan usia/jumlah transaksi baru dan pengunci aplikasi memakai keamanan perangkat.
+- Deep-link notifikasi, onboarding, data demo opsional, dan database SQLCipher terenkripsi.
 - Material 3, tema terang/gelap, tanpa backend, akun, atau network call.
 
 ## Arsitektur
@@ -31,7 +36,7 @@ Services (OCR, parser, notification, device security, export/backup)
 DatabaseHelper → SQLite on-device
 ```
 
-`DatabaseHelper` menggunakan migrasi versi sejak awal. Restore JSON berjalan di dalam transaksi SQLite agar kegagalan validasi tidak meninggalkan database setengah terpulihkan.
+`DatabaseHelper` menggunakan migrasi versi sejak awal. Instalasi lama dimigrasikan satu kali dari SQLite biasa ke SQLCipher dengan kunci acak di secure storage. Restore JSON berjalan di dalam transaksi database agar kegagalan validasi tidak meninggalkan data setengah terpulihkan.
 
 ## Menjalankan
 
