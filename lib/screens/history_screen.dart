@@ -146,14 +146,22 @@ class _HistoryScreenState extends State<HistoryScreen>
                         decoration: BoxDecoration(
                           color: provider.filterCategory == null
                               ? Theme.of(context).cardColor
-                              : pundiLilac,
+                              : fintechBlue,
                           borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: provider.filterCategory == null
+                                ? Theme.of(context).colorScheme.outlineVariant
+                                      .withValues(alpha: .45)
+                                : fintechBlue,
+                          ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.category_outlined,
-                              color: pundiViolet,
+                              color: provider.filterCategory == null
+                                  ? fintechBlue
+                                  : Colors.white,
                             ),
                             const SizedBox(width: 11),
                             Expanded(
@@ -161,7 +169,10 @@ class _HistoryScreenState extends State<HistoryScreen>
                                 provider.filterCategory ?? 'Semua kategori',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
+                                  color: provider.filterCategory == null
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Colors.white,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -169,8 +180,13 @@ class _HistoryScreenState extends State<HistoryScreen>
                             AnimatedRotation(
                               turns: _showCategories ? .5 : 0,
                               duration: const Duration(milliseconds: 220),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.keyboard_arrow_down_rounded,
+                                color: provider.filterCategory == null
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant
+                                    : Colors.white,
                               ),
                             ),
                           ],

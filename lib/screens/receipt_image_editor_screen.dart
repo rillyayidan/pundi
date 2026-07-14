@@ -96,7 +96,10 @@ class _ReceiptImageEditorScreenState extends State<ReceiptImageEditorScreen> {
                             ? null
                             : () => _run(() => _editor.crop(context, _path)),
                         icon: const Icon(Icons.crop_rotate_rounded),
-                        label: const Text('Potong'),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Potong', maxLines: 1, softWrap: false),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -106,7 +109,10 @@ class _ReceiptImageEditorScreenState extends State<ReceiptImageEditorScreen> {
                             ? null
                             : () => _run(() => _editor.rotateClockwise(_path)),
                         icon: const Icon(Icons.rotate_90_degrees_cw_rounded),
-                        label: const Text('Putar'),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Putar', maxLines: 1, softWrap: false),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -120,7 +126,14 @@ class _ReceiptImageEditorScreenState extends State<ReceiptImageEditorScreen> {
                                 return result;
                               }),
                         icon: const Icon(Icons.auto_fix_high_rounded),
-                        label: Text(_enhanced ? 'Tajam' : 'Perjelas'),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _enhanced ? 'Tajam' : 'Perjelas',
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
+                        ),
                         style: FilledButton.styleFrom(
                           foregroundColor: pundiViolet,
                         ),
