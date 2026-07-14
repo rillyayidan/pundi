@@ -10,6 +10,7 @@ import '../providers/transaction_provider.dart';
 import '../providers/app_features_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/wallet_provider.dart';
+import '../providers/debt_provider.dart';
 import '../services/backup_service.dart';
 import '../services/export_service.dart';
 import '../services/import_service.dart';
@@ -22,6 +23,7 @@ import 'custom_categories_screen.dart';
 import 'savings_goals_screen.dart';
 import 'trash_screen.dart';
 import 'wallets_screen.dart';
+import 'debts_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -94,6 +96,7 @@ class SettingsScreen extends StatelessWidget {
     final features = context.watch<AppFeaturesProvider>();
     final categoryProvider = context.watch<CategoryProvider>();
     final walletProvider = context.watch<WalletProvider>();
+    final debtProvider = context.watch<DebtProvider>();
     final backup = BackupService(DatabaseHelper.instance);
     return Scaffold(
       body: ListView(
@@ -210,6 +213,22 @@ class SettingsScreen extends StatelessWidget {
                       );
                     }
                   },
+                ),
+                const Divider(height: 1, indent: 72),
+                ListTile(
+                  leading: const _SettingsIcon(icon: Icons.handshake_outlined),
+                  title: const Text(
+                    'Utang & piutang',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    'Utang ${formatRupiah(debtProvider.totalPayable)} · piutang ${formatRupiah(debtProvider.totalReceivable)}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DebtsScreen()),
+                  ),
                 ),
                 const Divider(height: 1, indent: 72),
                 ListTile(

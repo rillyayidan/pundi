@@ -12,6 +12,7 @@ import '../models/transaction_model.dart';
 import '../models/recurring_rule_model.dart';
 import '../models/wallet_model.dart';
 import '../models/wallet_transfer_model.dart';
+import '../models/debt_model.dart';
 import 'db_constants.dart';
 
 class DatabaseHelper {
@@ -117,6 +118,7 @@ class DatabaseHelper {
     await _createIterationTables(db);
     await _createWalletTables(db);
     await _createTransferTables(db);
+    await _createDebtTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -146,6 +148,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 6) {
       await _createTransferTables(db);
+    }
+    if (oldVersion < 7) {
+      await _createDebtTables(db);
     }
   }
 
@@ -265,6 +270,85 @@ class DatabaseHelper {
       CREATE INDEX IF NOT EXISTS idx_wallet_transfers_date
       ON ${DbConstants.walletTransfers}(date DESC)
     ''');
+  }
+
+  Future<void> _createDebtTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DbConstants.debts} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL CHECK(type IN ('payable', 'receivable')),
+        person TEXT NOT NULL,
+        total_amount REAL NOT NULL CHECK(total_amount > 0),
+        paid_amount REAL NOT NULL DEFAULT 0 CHECK(paid_amount >= 0),
+        due_date TEXT NOT NULL,
+        wallet_id INTEGER NOT NULL DEFAULT 1,
+        note TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(wallet_id) REFERENCES ${DbConstants.wallets}(id)
+      )
+    ''');
+  }
+
+  Future<List<DebtModel>> getDebts() async {
+    final db = await database;
+    final rows = await db.query(
+      DbConstants.debts,
+      orderBy:
+          'CASE WHEN paid_amount >= total_amount THEN 1 ELSE 0 END, due_date ASC',
+    );
+    return rows.map(DebtModel.fromMap).toList(growable: false);
+  }
+
+  Future<int> saveDebt(DebtModel debt) async {
+    final db = await database;
+    if (debt.id == null) {
+      return db.insert(DbConstants.debts, debt.toMap(includeId: false));
+    }
+    await db.update(
+      DbConstants.debts,
+      debt.toMap(includeId: false),
+      where: 'id = ?',
+      whereArgs: [debt.id],
+    );
+    return debt.id!;
+  }
+
+  Future<void> deleteDebt(int id) async {
+    final db = await database;
+    await db.delete(DbConstants.debts, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> recordDebtPayment(DebtModel debt, double amount) async {
+    if (debt.id == null || amount <= 0 || amount > debt.remaining + .5) {
+      throw ArgumentError('Nominal pembayaran utang/piutang tidak valid.');
+    }
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.update(
+        DbConstants.debts,
+        {'paid_amount': debt.paidAmount + amount},
+        where: 'id = ?',
+        whereArgs: [debt.id],
+      );
+      final transaction = TransactionModel(
+        type: debt.type == DebtType.receivable
+            ? TransactionType.income
+            : TransactionType.expense,
+        amount: amount,
+        category: debt.type == DebtType.receivable
+            ? 'Pendapatan lain'
+            : 'Tagihan',
+        date: DateTime.now(),
+        walletId: debt.walletId,
+        merchant: debt.person,
+        note:
+            'Pembayaran ${debt.type.label.toLowerCase()}${debt.note.isEmpty ? '' : ' · ${debt.note}'}',
+      );
+      await txn.insert(
+        DbConstants.transactions,
+        transaction.toMap(includeId: false),
+      );
+    });
   }
 
   Future<List<WalletTransferModel>> getWalletTransfers() async {
@@ -782,7 +866,7 @@ class DatabaseHelper {
     final db = await database;
     return {
       'format': 'pundi-backup',
-      'version': 5,
+      'version': 6,
       'exported_at': DateTime.now().toUtc().toIso8601String(),
       'transactions': await db.query(DbConstants.transactions),
       'budgets': await db.query(DbConstants.budgets),
@@ -792,6 +876,7 @@ class DatabaseHelper {
       'savings_goals': await db.query(DbConstants.savingsGoals),
       'wallets': await db.query(DbConstants.wallets),
       'wallet_transfers': await db.query(DbConstants.walletTransfers),
+      'debts': await db.query(DbConstants.debts),
     };
   }
 
@@ -802,7 +887,8 @@ class DatabaseHelper {
             version != 2 &&
             version != 3 &&
             version != 4 &&
-            version != 5)) {
+            version != 5 &&
+            version != 6)) {
       throw const FormatException('Format cadangan Pundi tidak dikenali.');
     }
     final transactions = backup['transactions'];
@@ -860,7 +946,7 @@ class DatabaseHelper {
           backup['savings_goals'],
         );
       }
-      if (version == 4 || version == 5) {
+      if (version == 4 || version == 5 || version == 6) {
         await txn.delete(DbConstants.wallets);
         await _restoreRows(txn, DbConstants.wallets, backup['wallets']);
         if (Sqflite.firstIntValue(
@@ -878,13 +964,17 @@ class DatabaseHelper {
           });
         }
       }
-      if (version == 5) {
+      if (version == 5 || version == 6) {
         await txn.delete(DbConstants.walletTransfers);
         await _restoreRows(
           txn,
           DbConstants.walletTransfers,
           backup['wallet_transfers'],
         );
+      }
+      if (version == 6) {
+        await txn.delete(DbConstants.debts);
+        await _restoreRows(txn, DbConstants.debts, backup['debts']);
       }
     });
   }
