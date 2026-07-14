@@ -65,7 +65,7 @@ class DebtsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Utang & piutang')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: pundiCoral,
+        backgroundColor: fintechBlue,
         foregroundColor: Colors.white,
         onPressed: () => Navigator.push(
           context,

@@ -98,7 +98,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                     const Text(
                       'RIWAYAT',
                       style: TextStyle(
-                        color: pundiCoral,
+                        color: fintechAccent,
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
@@ -305,7 +305,12 @@ class _HistoryScreenState extends State<HistoryScreen>
                     return Container(
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: .4),
+                        ),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: TransactionTile(

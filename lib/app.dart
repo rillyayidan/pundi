@@ -19,17 +19,29 @@ class PundiApp extends StatelessWidget {
 
   ThemeData _theme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    final scheme = ColorScheme.fromSeed(
-      seedColor: pundiViolet,
-      brightness: brightness,
-      surface: isDark ? darkCanvas : warmSurface,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: fintechBlue,
+          brightness: brightness,
+          surface: isDark ? darkCanvas : warmSurface,
+        ).copyWith(
+          primary: fintechBlue,
+          secondary: fintechAccent,
+          error: dangerRed,
+          surface: isDark ? darkCanvas : warmSurface,
+        );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
       fontFamily: 'sans-serif',
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _FintechPageTransitionBuilder(),
+          TargetPlatform.iOS: _FintechPageTransitionBuilder(),
+        },
+      ),
       textTheme: ThemeData(brightness: brightness).textTheme.apply(
         bodyColor: isDark ? const Color(0xFFF2EDF7) : inkColor,
         displayColor: isDark ? const Color(0xFFF2EDF7) : inkColor,
@@ -47,25 +59,30 @@ class PundiApp extends StatelessWidget {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: isDark ? darkCard : const Color(0xFFFFFCF8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        color: isDark ? darkCard : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: isDark ? .18 : .5),
+          ),
+        ),
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? darkCard : const Color(0xFFFFFCF8),
+        fillColor: isDark ? darkCard : Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
             color: scheme.outlineVariant.withValues(alpha: .55),
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -77,7 +94,7 @@ class PundiApp extends StatelessWidget {
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
@@ -89,6 +106,45 @@ class PundiApp extends StatelessWidget {
         side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isDark ? const Color(0xFF1E293B) : fintechNavy,
+        contentTextStyle: const TextStyle(color: Colors.white),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: isDark ? darkCard : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      ),
+    );
+  }
+}
+
+class _FintechPageTransitionBuilder extends PageTransitionsBuilder {
+  const _FintechPageTransitionBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(.025, .015),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
       ),
     );
   }

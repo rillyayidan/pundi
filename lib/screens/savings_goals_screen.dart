@@ -88,7 +88,7 @@ class SavingsGoalsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Target tabungan')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: pundiCoral,
+        backgroundColor: fintechBlue,
         foregroundColor: Colors.white,
         onPressed: () => showModalBottomSheet<void>(
           context: context,

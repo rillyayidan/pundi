@@ -29,7 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       Icons.document_scanner_rounded,
       'Struk dibaca di HP',
       'OCR, merchant memory, dan pemisahan item bekerja langsung di perangkat tanpa server.',
-      pundiCoral,
+      fintechAccent,
     ),
     (
       Icons.lock_rounded,

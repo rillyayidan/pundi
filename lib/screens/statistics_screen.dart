@@ -106,7 +106,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const Text(
               'STATISTIK',
               style: TextStyle(
-                color: pundiCoral,
+                color: fintechAccent,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.5,
@@ -384,7 +384,7 @@ class _ChartTitle extends StatelessWidget {
       Text(
         eyebrow,
         style: const TextStyle(
-          color: pundiCoral,
+          color: fintechAccent,
           fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: 1.4,

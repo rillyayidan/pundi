@@ -109,7 +109,25 @@ class _AppShellState extends State<AppShell> {
       children: [
         SafeArea(
           bottom: false,
-          child: IndexedStack(index: _index, children: _pages),
+          child: Stack(
+            children: List.generate(_pages.length, (pageIndex) {
+              final active = pageIndex == _index;
+              return Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !active,
+                  child: TickerMode(
+                    enabled: active,
+                    child: AnimatedOpacity(
+                      opacity: active ? 1 : 0,
+                      duration: const Duration(milliseconds: 210),
+                      curve: Curves.easeOutCubic,
+                      child: _pages[pageIndex],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
         ),
         Positioned(
           left: 14,
@@ -160,8 +178,8 @@ class _BottomDock extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: dark ? const Color(0xF52B2735) : const Color(0xF7FFFCF8),
-        borderRadius: BorderRadius.circular(26),
+        color: dark ? const Color(0xF2111D2F) : const Color(0xFAFFFFFF),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: Theme.of(
             context,
@@ -169,9 +187,9 @@ class _BottomDock extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? .28 : .1),
-            blurRadius: 26,
-            offset: const Offset(0, 10),
+            color: fintechNavy.withValues(alpha: dark ? .3 : .09),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -184,16 +202,18 @@ class _BottomDock extends StatelessWidget {
             return Expanded(
               child: InkWell(
                 onTap: () => onSelect(itemIndex),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 240),
                   curve: Curves.easeOutCubic,
-                  height: 52,
+                  height: 50,
                   decoration: BoxDecoration(
                     color: selected
-                        ? (itemIndex == 2 ? pundiCoral : pundiViolet)
+                        ? (itemIndex == 2
+                              ? fintechAccent.withValues(alpha: .14)
+                              : pundiLilac)
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(19),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -202,7 +222,7 @@ class _BottomDock extends StatelessWidget {
                         item.$1,
                         size: 21,
                         color: selected
-                            ? Colors.white
+                            ? (itemIndex == 2 ? fintechAccent : fintechBlue)
                             : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(height: 2),
@@ -213,7 +233,7 @@ class _BottomDock extends StatelessWidget {
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           color: selected
-                              ? Colors.white
+                              ? (itemIndex == 2 ? fintechAccent : fintechBlue)
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -236,18 +256,26 @@ class _AddButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: pundiCoral,
+    color: Colors.transparent,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    elevation: 8,
-    shadowColor: pundiCoral.withValues(alpha: .35),
+    elevation: 10,
+    shadowColor: fintechBlue.withValues(alpha: .28),
     child: InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(20),
-      child: const SizedBox(
+      child: Ink(
         width: 58,
         height: 58,
-        child: Icon(Icons.add_rounded, color: Colors.white, size: 30),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [fintechBlue, Color(0xFF3B82F6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 29),
       ),
     ),
   );

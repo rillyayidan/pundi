@@ -113,7 +113,7 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
         const Text(
           'SMART SCAN',
           style: TextStyle(
-            color: pundiCoral,
+            color: fintechAccent,
             fontSize: 10,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.5,
@@ -133,15 +133,28 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [pundiViolet, pundiVioletDark],
+              colors: [fintechNavy, fintechBlue],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(32),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             children: [
-              Icon(Icons.document_scanner_rounded, size: 66, color: pundiAmber),
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: const Icon(
+                  Icons.document_scanner_rounded,
+                  size: 34,
+                  color: Color(0xFF5EEAD4),
+                ),
+              ),
               const SizedBox(height: 14),
               const Text(
                 'Foto struk, biar Pundi yang membaca',

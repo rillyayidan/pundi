@@ -17,7 +17,7 @@ class WalletTransfersScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Transfer antar-wallet')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: pundiCoral,
+        backgroundColor: fintechBlue,
         foregroundColor: Colors.white,
         onPressed: provider.wallets.length < 2
             ? null

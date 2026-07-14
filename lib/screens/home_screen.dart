@@ -115,7 +115,12 @@ class HomeScreen extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(18, 10, 18, 12),
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: .45),
+                      ),
                     ),
                     child: Column(
                       children: dashboard.budgets.entries
@@ -175,7 +180,12 @@ class HomeScreen extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: .45),
+                      ),
                     ),
                     child: Column(
                       children: transactions.allTransactions.take(5).map((
@@ -224,14 +234,13 @@ class _Header extends StatelessWidget {
           height: 46,
           padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFCF8),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .06),
-                blurRadius: 16,
-              ),
-            ],
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: .45),
+            ),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
@@ -244,7 +253,7 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Halo, apa kabar?',
+                'Ringkasan keuangan',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -267,7 +276,9 @@ class _Header extends StatelessWidget {
             width: 43,
             height: 43,
             decoration: BoxDecoration(
-              color: dueCount > 0 ? pundiCoral : pundiLilac,
+              color: dueCount > 0
+                  ? dangerRed.withValues(alpha: .12)
+                  : pundiLilac,
               borderRadius: BorderRadius.circular(15),
             ),
             child: Stack(
@@ -277,7 +288,7 @@ class _Header extends StatelessWidget {
                   dueCount > 0
                       ? Icons.notifications_active_rounded
                       : Icons.notifications_none_rounded,
-                  color: dueCount > 0 ? Colors.white : pundiVioletDark,
+                  color: dueCount > 0 ? dangerRed : fintechBlue,
                 ),
                 if (dueCount > 0)
                   Positioned(
@@ -288,13 +299,13 @@ class _Header extends StatelessWidget {
                       height: 15,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(
-                        color: pundiAmber,
+                        color: dangerRed,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
                         '$dueCount',
                         style: const TextStyle(
-                          color: inkColor,
+                          color: Colors.white,
                           fontSize: 9,
                           fontWeight: FontWeight.w900,
                         ),
@@ -389,7 +400,7 @@ class _BackupNudge extends StatelessWidget {
         SizedBox(width: 11),
         Expanded(
           child: Text(
-            'Data baru belum dicadangkan. Buka Atur untuk membuat backup JSON.',
+            'Data baru belum dicadangkan. Buka Atur untuk membuat backup terenkripsi.',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
@@ -537,13 +548,13 @@ class _MonthlyInsights extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFE4DA),
+              color: dangerRed.withValues(alpha: .09),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Text(
               'Tidak biasa: ${dashboard.unusualCategories.join(', ')} diproyeksikan naik setidaknya 50% dari rata-rata 3 bulan.',
               style: const TextStyle(
-                color: Color(0xFF702918),
+                color: dangerRed,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -617,101 +628,120 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      color: pundiViolet,
-      borderRadius: BorderRadius.circular(32),
+      gradient: const LinearGradient(
+        colors: [fintechNavy, Color(0xFF164E9A), fintechBlue],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(24),
       boxShadow: [
         BoxShadow(
-          color: pundiViolet.withValues(alpha: .24),
-          blurRadius: 32,
-          offset: const Offset(0, 14),
+          color: fintechBlue.withValues(alpha: .2),
+          blurRadius: 28,
+          offset: const Offset(0, 12),
         ),
       ],
     ),
-    child: Stack(
-      children: [
-        Positioned(
-          right: -35,
-          top: -55,
-          child: Container(
-            width: 170,
-            height: 170,
-            decoration: BoxDecoration(
-              color: pundiCoral.withValues(alpha: .82),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        Positioned(
-          right: 50,
-          top: 58,
-          child: Transform.rotate(
-            angle: -.22,
-            child: Container(
-              width: 90,
-              height: 22,
-              decoration: BoxDecoration(
-                color: pundiAmber.withValues(alpha: .92),
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    child: Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
               const Text(
-                'TOTAL SALDO',
+                'SALDO TERSEDIA',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.3,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.25,
                 ),
               ),
-              const SizedBox(height: 9),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  formatRupiah(balance),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 35,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1.4,
-                  ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: Colors.white12),
                 ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: _MoneyStat(
-                      icon: Icons.south_west_rounded,
-                      label: 'Masuk',
-                      value: income,
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.shield_outlined,
+                      color: Colors.white70,
+                      size: 13,
                     ),
-                  ),
-                  Container(width: 1, height: 38, color: Colors.white24),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: _MoneyStat(
-                      icon: Icons.north_east_rounded,
-                      label: 'Keluar',
-                      value: expense,
+                    SizedBox(width: 4),
+                    Text(
+                      'OFFLINE',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: .7,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: balance),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            builder: (_, value, _) => FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                formatRupiah(value),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  height: 1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1.2,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _MoneyStat(
+                    icon: Icons.south_west_rounded,
+                    label: 'Pemasukan',
+                    value: income,
+                    color: const Color(0xFF5EEAD4),
+                  ),
+                ),
+                Container(width: 1, height: 38, color: Colors.white12),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _MoneyStat(
+                    icon: Icons.north_east_rounded,
+                    label: 'Pengeluaran',
+                    value: expense,
+                    color: const Color(0xFFFDA4AF),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -721,10 +751,12 @@ class _MoneyStat extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    required this.color,
   });
   final IconData icon;
   final String label;
   final double value;
+  final Color color;
   @override
   Widget build(BuildContext context) => Row(
     children: [
@@ -732,10 +764,10 @@ class _MoneyStat extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .15),
+          color: color.withValues(alpha: .14),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: Colors.white, size: 18),
+        child: Icon(icon, color: color, size: 18),
       ),
       const SizedBox(width: 9),
       Expanded(
@@ -774,9 +806,9 @@ class _BudgetWarning extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFE4DA),
+        color: dangerRed.withValues(alpha: .09),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: pundiCoral.withValues(alpha: .25)),
+        border: Border.all(color: dangerRed.withValues(alpha: .2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -785,7 +817,7 @@ class _BudgetWarning extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: pundiCoral,
+              color: dangerRed,
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(Icons.priority_high_rounded, color: Colors.white),
@@ -798,7 +830,7 @@ class _BudgetWarning extends StatelessWidget {
                 const Text(
                   'Anggaran terlewati',
                   style: TextStyle(
-                    color: Color(0xFF702918),
+                    color: dangerRed,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -806,10 +838,7 @@ class _BudgetWarning extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${names.join(', ')} sudah melewati batas bulan ini. Sebaiknya tekan pengeluaran kategori ini sampai periode berikutnya.',
-                  style: const TextStyle(
-                    color: Color(0xFF702918),
-                    height: 1.35,
-                  ),
+                  style: const TextStyle(color: dangerRed, height: 1.35),
                 ),
               ],
             ),
@@ -840,7 +869,7 @@ class _SectionHeader extends StatelessWidget {
             Text(
               eyebrow,
               style: const TextStyle(
-                color: pundiCoral,
+                color: fintechAccent,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.4,

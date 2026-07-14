@@ -32,7 +32,7 @@ class RecurringScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Transaksi berulang')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: pundiCoral,
+        backgroundColor: fintechBlue,
         foregroundColor: Colors.white,
         onPressed: () => Navigator.push(
           context,

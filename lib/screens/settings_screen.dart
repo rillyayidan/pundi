@@ -171,7 +171,7 @@ class SettingsScreen extends StatelessWidget {
           const Text(
             'PENGATURAN',
             style: TextStyle(
-              color: pundiCoral,
+              color: fintechAccent,
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -389,7 +389,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   subtitle: Text(
                     features.securitySupported
-                        ? 'Gunakan biometrik atau kunci layar perangkat'
+                        ? 'Verifikasi sekali setiap HP dinyalakan ulang'
                         : 'Keamanan perangkat tidak tersedia',
                   ),
                   value: features.lockEnabled,

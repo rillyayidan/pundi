@@ -22,7 +22,7 @@ class ReceiptImageEditorService {
           toolbarTitle: 'Potong & putar struk',
           toolbarColor: pundiViolet,
           toolbarWidgetColor: Colors.white,
-          activeControlsWidgetColor: pundiCoral,
+          activeControlsWidgetColor: fintechAccent,
           lockAspectRatio: false,
           aspectRatioPresets: const [CropAspectRatioPreset.original],
         ),

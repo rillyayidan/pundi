@@ -15,7 +15,7 @@ class CustomCategoriesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Kategori buatanmu')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: pundiCoral,
+        backgroundColor: fintechBlue,
         foregroundColor: Colors.white,
         onPressed: () => showModalBottomSheet<void>(
           context: context,
