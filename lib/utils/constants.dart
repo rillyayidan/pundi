@@ -3,19 +3,24 @@ import 'package:flutter/material.dart';
 import '../models/category_model.dart';
 import '../models/transaction_model.dart';
 
-const pundiViolet = Color(0xFF6657D9);
-const pundiVioletDark = Color(0xFF40338F);
-const pundiLilac = Color(0xFFE9E5FF);
-const pundiCoral = Color(0xFFFF7657);
-const pundiAmber = Color(0xFFFFC857);
-const successTeal = Color(0xFF218C7A);
+const fintechBlue = Color(0xFF2563EB);
+const fintechNavy = Color(0xFF0B1F3A);
+const fintechAccent = Color(0xFF0D9488);
+const dangerRed = Color(0xFFDC4C64);
+const warningAmber = Color(0xFFF59E0B);
+const pundiViolet = fintechBlue;
+const pundiVioletDark = fintechNavy;
+const pundiLilac = Color(0xFFEAF1FF);
+const pundiCoral = dangerRed;
+const pundiAmber = warningAmber;
+const successTeal = Color(0xFF059669);
 const brandGreen = successTeal;
 const brandGreenDark = Color(0xFF17695B);
-const brandMint = Color(0xFFDDF3EE);
-const warmSurface = Color(0xFFF5F0E8);
-const inkColor = Color(0xFF211E2B);
-const darkCanvas = Color(0xFF1B1824);
-const darkCard = Color(0xFF282432);
+const brandMint = Color(0xFFDDF7F2);
+const warmSurface = Color(0xFFF4F7FB);
+const inkColor = Color(0xFF0F172A);
+const darkCanvas = Color(0xFF07111F);
+const darkCard = Color(0xFF111D2F);
 
 const predefinedExpenseCategories = <CategoryModel>[
   CategoryModel(

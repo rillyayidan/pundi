@@ -31,6 +31,7 @@ class AppFeaturesProvider extends ChangeNotifier {
   int currentTransactionCount = 0;
   String? error;
   bool onboardingSeen = false;
+  String? _bootSessionId;
 
   List<RecurringRuleModel> get dueRules {
     final endToday = DateTime.now().add(const Duration(days: 1));
@@ -51,10 +52,17 @@ class AppFeaturesProvider extends ChangeNotifier {
       await _notifications.initialize();
       securitySupported = await _security.isSupported();
       lockEnabled = await _database.getSetting('app_lock_enabled') == 'true';
+      _bootSessionId = await _security.bootSessionId();
       notificationsEnabled =
           await _database.getSetting('notifications_enabled') == 'true';
       onboardingSeen = await _database.getSetting('onboarding_seen') == 'true';
-      locked = lockEnabled;
+      locked = SecurityService.requiresAuthentication(
+        lockEnabled: lockEnabled,
+        authenticatedSession: await _database.getSetting(
+          'authenticated_boot_session',
+        ),
+        currentSession: _bootSessionId,
+      );
       await refresh();
       if (!onboardingSeen && currentTransactionCount > 0) {
         onboardingSeen = true;
@@ -91,6 +99,7 @@ class AppFeaturesProvider extends ChangeNotifier {
     }
     final success = await _security.authenticate();
     if (success) {
+      await _rememberAuthenticatedSession();
       locked = false;
       notifyListeners();
     }
@@ -110,8 +119,16 @@ class AppFeaturesProvider extends ChangeNotifier {
     lockEnabled = value;
     locked = false;
     await _database.setSetting('app_lock_enabled', value.toString());
+    if (value) await _rememberAuthenticatedSession();
     notifyListeners();
     return true;
+  }
+
+  Future<void> _rememberAuthenticatedSession() async {
+    final session = _bootSessionId ??= await _security.bootSessionId();
+    if (session != null) {
+      await _database.setSetting('authenticated_boot_session', session);
+    }
   }
 
   Future<bool> setNotificationsEnabled(bool value) async {

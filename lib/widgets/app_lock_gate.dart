@@ -17,17 +17,17 @@ class AppLockGate extends StatefulWidget {
   State<AppLockGate> createState() => _AppLockGateState();
 }
 
-class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
+class _AppLockGateState extends State<AppLockGate> {
+  bool _authenticating = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     NotificationService.tappedPayload.addListener(_handlePayload);
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     NotificationService.tappedPayload.removeListener(_handlePayload);
     super.dispose();
   }
@@ -49,11 +49,11 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
     );
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      context.read<AppFeaturesProvider>().lock();
-    }
+  Future<void> _unlock() async {
+    if (_authenticating) return;
+    setState(() => _authenticating = true);
+    await context.read<AppFeaturesProvider>().unlock();
+    if (mounted) setState(() => _authenticating = false);
   }
 
   @override
@@ -70,44 +70,125 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
       }
       return widget.child;
     }
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: const BoxDecoration(
-                    color: pundiLilac,
-                    shape: BoxShape.circle,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: dark
+                ? const [darkCanvas, Color(0xFF0D2341)]
+                : const [Color(0xFFEAF1FF), warmSurface],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 76,
+                          height: 76,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [fintechNavy, fintechBlue],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow: [
+                              BoxShadow(
+                                color: fintechBlue.withValues(alpha: .22),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.shield_outlined,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Verifikasi perangkat',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -.8,
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          'Cukup sekali setelah HP dinyalakan ulang. Membuka kamera atau berpindah aplikasi tidak akan meminta verifikasi lagi.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 26),
+                        FilledButton(
+                          onPressed: _authenticating ? null : _unlock,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 180),
+                            child: _authenticating
+                                ? const SizedBox.square(
+                                    key: ValueKey('loading'),
+                                    dimension: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Row(
+                                    key: ValueKey('action'),
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.fingerprint_rounded),
+                                      SizedBox(width: 9),
+                                      Text('Verifikasi dan buka'),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.lock_outline_rounded,
+                              size: 14,
+                              color: fintechAccent,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'Data tetap tersimpan offline',
+                              style: TextStyle(
+                                color: fintechAccent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.lock_rounded,
-                    color: pundiViolet,
-                    size: 42,
-                  ),
                 ),
-                const SizedBox(height: 22),
-                const Text(
-                  'Pundi terkunci',
-                  style: TextStyle(fontSize: 27, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Gunakan keamanan perangkat untuk membuka data keuanganmu.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: features.unlock,
-                  icon: const Icon(Icons.fingerprint_rounded),
-                  label: const Text('Buka Pundi'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
