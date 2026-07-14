@@ -9,6 +9,7 @@ import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/confidence_badge.dart';
 import 'add_transaction_screen.dart';
+import 'receipt_image_editor_screen.dart';
 
 class ScanBillScreen extends StatefulWidget {
   const ScanBillScreen({super.key});
@@ -50,15 +51,23 @@ class _ScanBillScreenState extends State<ScanBillScreen> {
     if (image == null) {
       return;
     }
+    if (!mounted) return;
+    final editedPath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReceiptImageEditorScreen(sourcePath: image.path),
+      ),
+    );
+    if (editedPath == null || !mounted) return;
     setState(() => _processing = true);
     try {
-      final text = await _ocr.recognize(image.path);
+      final text = await _ocr.recognize(editedPath);
       if (text.trim().isEmpty) {
         throw const FormatException(
           'Tidak ada teks yang terdeteksi. Coba foto dengan cahaya lebih terang.',
         );
       }
-      final parsed = _parser.parse(text, sourceImagePath: image.path);
+      final parsed = _parser.parse(text, sourceImagePath: editedPath);
       if (mounted) {
         setState(() => _result = parsed);
       }
