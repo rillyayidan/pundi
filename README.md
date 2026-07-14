@@ -5,8 +5,10 @@ Pundi adalah aplikasi pencatat keuangan Flutter yang sepenuhnya offline. Penggun
 ## Fitur
 
 - Dashboard saldo, pemasukan/pengeluaran bulan berjalan, dan transaksi terbaru.
+- Multi-dompet dengan saldo awal, transfer antar-dompet, serta saldo gabungan.
+- Utang/piutang dengan jatuh tempo, progres pembayaran, dan pencatatan arus kas otomatis.
 - CRUD transaksi lokal dengan halaman detail, catatan, tanggal/jam, edit, hapus, serta filter periode dan kategori.
-- Kamera/galeri → OCR on-device → parser struk → konfirmasi yang dapat diedit.
+- Kamera/galeri → crop/putar/perjelas gambar → OCR on-device → parser struk → konfirmasi yang dapat diedit.
 - Saran kategori berbasis kata kunci merchant dan teks struk.
 - Smart merchant memory: koreksi kategori merchant dipakai kembali secara lokal.
 - Transaksi mingguan/bulanan berulang dengan konfirmasi, lewati, edit, dan pengingat lokal.
@@ -16,10 +18,12 @@ Pundi adalah aplikasi pencatat keuangan Flutter yang sepenuhnya offline. Penggun
 - Pencarian riwayat berdasarkan merchant, catatan, kategori, atau nominal.
 - Anggaran per kategori dengan peringatan eksplisit saat batas bulanan terlewati.
 - Prediksi anggaran berbasis bulan berjalan dan rata-rata 3 bulan terakhir.
-- Target tabungan, saran setoran bulanan, dan pencatatan progres.
+- Target tabungan yang terhubung ke dompet tujuan dan transfer setoran.
 - Sampah transaksi 30 hari, pemulihan, hapus permanen, serta Undo.
 - Donut chart kategori dan arus kas dengan rentang 7 hari, bulan berjalan, atau tanggal kustom.
-- Ekspor dan impor CSV serta backup/restore penuh dalam JSON.
+- Deteksi transaksi ganda pada input dan impor CSV.
+- Ekspor/impor CSV serta backup AES-256-GCM berpassword; restore JSON lama tetap didukung.
+- Catat cepat dari tombol tambah dan widget layar utama Android.
 - Pengingat backup berdasarkan usia/jumlah transaksi baru dan pengunci aplikasi memakai keamanan perangkat.
 - Deep-link notifikasi, onboarding, data demo opsional, dan database SQLCipher terenkripsi.
 - Material 3, tema terang/gelap, tanpa backend, akun, atau network call.
@@ -44,6 +48,7 @@ Prasyarat: Flutter stable dengan Dart 3.8+, Android SDK, dan perangkat/emulator 
 
 ```bash
 flutter pub get
+flutter analyze
 flutter test
 flutter run
 ```
@@ -54,11 +59,17 @@ Rilis Android:
 flutter build apk --release
 ```
 
+Smoke test pada perangkat/emulator:
+
+```bash
+flutter test integration_test/app_smoke_test.dart
+```
+
 > Mengapa minSdk 24? Rilis terkini `image_picker` dan `path_provider` telah menaikkan dukungan minimum Android ke SDK 24.
 
 ## Privasi dan keterbatasan
 
-Semua transaksi dan hasil OCR disimpan hanya di perangkat. Pundi tidak memiliki sinkronisasi cloud, sehingga uninstall dapat menghapus data. Gunakan menu **Pengaturan → Cadangkan ke JSON** secara berkala dan simpan berkas di lokasi aman.
+Semua transaksi dan hasil OCR disimpan hanya di perangkat. Pundi tidak memiliki sinkronisasi cloud, sehingga uninstall dapat menghapus data. Gunakan menu **Pengaturan → Cadangkan terenkripsi** secara berkala, simpan berkas `.pundi` di lokasi aman, dan jangan lupakan password karena Pundi tidak menyimpannya.
 
 OCR dipengaruhi cahaya, fokus kamera, dan tata letak struk. Pundi tidak pernah menyimpan hasil scan secara otomatis: nominal, merchant, tanggal, dan kategori selalu ditampilkan pada layar konfirmasi terlebih dahulu.
 

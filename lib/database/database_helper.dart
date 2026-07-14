@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_sqlcipher/sqflite.dart';
@@ -129,21 +130,33 @@ class DatabaseHelper {
       await _createFeatureTables(db);
     }
     if (oldVersion < 4) {
-      await db.execute(
-        'ALTER TABLE ${DbConstants.transactions} ADD COLUMN receipt_image_path TEXT',
+      await _addColumnIfMissing(
+        db,
+        DbConstants.transactions,
+        'receipt_image_path',
+        'TEXT',
       );
-      await db.execute(
-        'ALTER TABLE ${DbConstants.transactions} ADD COLUMN deleted_at TEXT',
+      await _addColumnIfMissing(
+        db,
+        DbConstants.transactions,
+        'deleted_at',
+        'TEXT',
       );
       await _createIterationTables(db);
     }
     if (oldVersion < 5) {
       await _createWalletTables(db);
-      await db.execute(
-        'ALTER TABLE ${DbConstants.transactions} ADD COLUMN wallet_id INTEGER NOT NULL DEFAULT 1',
+      await _addColumnIfMissing(
+        db,
+        DbConstants.transactions,
+        'wallet_id',
+        'INTEGER NOT NULL DEFAULT 1',
       );
-      await db.execute(
-        'ALTER TABLE ${DbConstants.recurringRules} ADD COLUMN wallet_id INTEGER NOT NULL DEFAULT 1',
+      await _addColumnIfMissing(
+        db,
+        DbConstants.recurringRules,
+        'wallet_id',
+        'INTEGER NOT NULL DEFAULT 1',
       );
     }
     if (oldVersion < 6) {
@@ -153,11 +166,36 @@ class DatabaseHelper {
       await _createDebtTables(db);
     }
     if (oldVersion < 8) {
-      await db.execute(
-        'ALTER TABLE ${DbConstants.savingsGoals} ADD COLUMN wallet_id INTEGER NOT NULL DEFAULT 1',
+      await _addColumnIfMissing(
+        db,
+        DbConstants.savingsGoals,
+        'wallet_id',
+        'INTEGER NOT NULL DEFAULT 1',
       );
     }
   }
+
+  Future<void> _addColumnIfMissing(
+    DatabaseExecutor db,
+    String table,
+    String column,
+    String definition,
+  ) async {
+    final columns = await db.rawQuery('PRAGMA table_info($table)');
+    if (columns.any((item) => item['name'] == column)) return;
+    await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
+  }
+
+  @visibleForTesting
+  Future<void> createSchemaForTest(Database db) =>
+      _onCreate(db, DbConstants.databaseVersion);
+
+  @visibleForTesting
+  Future<void> migrateForTest(
+    Database db,
+    int oldVersion, [
+    int newVersion = DbConstants.databaseVersion,
+  ]) => _onUpgrade(db, oldVersion, newVersion);
 
   Future<void> _createBudgetsTable(DatabaseExecutor db) => db.execute('''
     CREATE TABLE IF NOT EXISTS ${DbConstants.budgets} (
