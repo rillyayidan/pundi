@@ -7,6 +7,7 @@ import '../models/transaction_model.dart';
 import '../providers/app_features_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/wallet_provider.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
@@ -101,6 +102,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
   late RecurrenceFrequency _frequency;
   late DateTime _nextDate;
   late bool _active;
+  late int _walletId;
 
   @override
   void initState() {
@@ -111,6 +113,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
     _frequency = rule?.frequency ?? RecurrenceFrequency.monthly;
     _nextDate = rule?.nextDate ?? DateTime.now().add(const Duration(days: 1));
     _active = rule?.isActive ?? true;
+    _walletId = rule?.walletId ?? 1;
     _amount = TextEditingController(
       text: rule == null ? '' : rule.amount.toStringAsFixed(0),
     );
@@ -150,6 +153,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
         category: _category,
         frequency: _frequency,
         nextDate: _nextDate,
+        walletId: _walletId,
         merchant: _merchant.text.trim().isEmpty ? null : _merchant.text.trim(),
         note: _note.text.trim(),
         isActive: _active,
@@ -257,6 +261,32 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
             onChanged: (value) => setState(() => _active = value),
             title: const Text('Jadwal aktif'),
             contentPadding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 14),
+          Consumer<WalletProvider>(
+            builder: (context, provider, _) {
+              if (provider.wallets.isEmpty) return const SizedBox.shrink();
+              if (!provider.wallets.any((wallet) => wallet.id == _walletId)) {
+                _walletId = provider.wallets.first.id!;
+              }
+              return DropdownButtonFormField<int>(
+                initialValue: _walletId,
+                decoration: const InputDecoration(
+                  labelText: 'Wallet',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                ),
+                items: provider.wallets
+                    .map(
+                      (wallet) => DropdownMenuItem(
+                        value: wallet.id,
+                        child: Text(wallet.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _walletId = value ?? _walletId),
+              );
+            },
           ),
           const SizedBox(height: 14),
           FilledButton.icon(

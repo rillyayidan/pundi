@@ -9,6 +9,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/app_features_provider.dart';
 import '../providers/category_provider.dart';
+import '../providers/wallet_provider.dart';
 import '../services/backup_service.dart';
 import '../services/export_service.dart';
 import '../services/import_service.dart';
@@ -20,6 +21,7 @@ import 'recurring_screen.dart';
 import 'custom_categories_screen.dart';
 import 'savings_goals_screen.dart';
 import 'trash_screen.dart';
+import 'wallets_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -91,6 +93,7 @@ class SettingsScreen extends StatelessWidget {
     final transactions = context.watch<TransactionProvider>();
     final features = context.watch<AppFeaturesProvider>();
     final categoryProvider = context.watch<CategoryProvider>();
+    final walletProvider = context.watch<WalletProvider>();
     final backup = BackupService(DatabaseHelper.instance);
     return Scaffold(
       body: ListView(
@@ -184,6 +187,31 @@ class SettingsScreen extends StatelessWidget {
           Card(
             child: Column(
               children: [
+                ListTile(
+                  leading: const _SettingsIcon(
+                    icon: Icons.account_balance_wallet_rounded,
+                  ),
+                  title: const Text(
+                    'Wallet & akun',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    '${walletProvider.wallets.length} wallet · ${formatRupiah(walletProvider.totalBalance)}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    await walletProvider.load();
+                    if (context.mounted) {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const WalletsScreen(),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const Divider(height: 1, indent: 72),
                 ListTile(
                   leading: const _SettingsIcon(icon: Icons.category_rounded),
                   title: const Text(

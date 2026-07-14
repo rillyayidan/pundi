@@ -8,6 +8,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/app_features_provider.dart';
 import 'providers/category_provider.dart';
+import 'providers/wallet_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => WalletProvider(database)..load()),
         ChangeNotifierProvider(
           create: (_) => CategoryProvider(database)..load(),
         ),

@@ -10,6 +10,7 @@ import '../models/category_model.dart';
 import '../models/savings_goal_model.dart';
 import '../models/transaction_model.dart';
 import '../models/recurring_rule_model.dart';
+import '../models/wallet_model.dart';
 import 'db_constants.dart';
 
 class DatabaseHelper {
@@ -97,6 +98,7 @@ class DatabaseHelper {
         amount REAL NOT NULL CHECK(amount > 0),
         category TEXT NOT NULL,
         date TEXT NOT NULL,
+        wallet_id INTEGER NOT NULL DEFAULT 1,
         note TEXT NOT NULL DEFAULT '',
         merchant TEXT,
         receipt_text TEXT,
@@ -112,6 +114,7 @@ class DatabaseHelper {
     await _createBudgetsTable(db);
     await _createFeatureTables(db);
     await _createIterationTables(db);
+    await _createWalletTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -129,6 +132,15 @@ class DatabaseHelper {
         'ALTER TABLE ${DbConstants.transactions} ADD COLUMN deleted_at TEXT',
       );
       await _createIterationTables(db);
+    }
+    if (oldVersion < 5) {
+      await _createWalletTables(db);
+      await db.execute(
+        'ALTER TABLE ${DbConstants.transactions} ADD COLUMN wallet_id INTEGER NOT NULL DEFAULT 1',
+      );
+      await db.execute(
+        'ALTER TABLE ${DbConstants.recurringRules} ADD COLUMN wallet_id INTEGER NOT NULL DEFAULT 1',
+      );
     }
   }
 
@@ -158,6 +170,7 @@ class DatabaseHelper {
         category TEXT NOT NULL,
         frequency TEXT NOT NULL CHECK(frequency IN ('weekly', 'monthly')),
         next_date TEXT NOT NULL,
+        wallet_id INTEGER NOT NULL DEFAULT 1,
         merchant TEXT,
         note TEXT NOT NULL DEFAULT '',
         is_active INTEGER NOT NULL DEFAULT 1,
@@ -203,6 +216,97 @@ class DatabaseHelper {
       CREATE INDEX IF NOT EXISTS idx_transactions_deleted
       ON ${DbConstants.transactions}(deleted_at, date DESC)
     ''');
+  }
+
+  Future<void> _createWalletTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DbConstants.wallets} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        icon_code INTEGER NOT NULL,
+        color_value INTEGER NOT NULL,
+        initial_balance REAL NOT NULL DEFAULT 0,
+        is_archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.insert(DbConstants.wallets, {
+      'id': 1,
+      'name': 'Tunai',
+      'icon_code': WalletModel.supportedIcons.first.codePoint,
+      'color_value': 0xFF6657D9,
+      'initial_balance': 0,
+      'is_archived': 0,
+      'created_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<List<WalletModel>> getWallets({bool includeArchived = false}) async {
+    final db = await database;
+    final rows = await db.query(
+      DbConstants.wallets,
+      where: includeArchived ? null : 'is_archived = 0',
+      orderBy: 'id ASC',
+    );
+    return rows.map(WalletModel.fromMap).toList(growable: false);
+  }
+
+  Future<int> saveWallet(WalletModel wallet) async {
+    final db = await database;
+    if (wallet.id == null) {
+      return db.insert(DbConstants.wallets, wallet.toMap(includeId: false));
+    }
+    await db.update(
+      DbConstants.wallets,
+      wallet.toMap(includeId: false),
+      where: 'id = ?',
+      whereArgs: [wallet.id],
+    );
+    return wallet.id!;
+  }
+
+  Future<void> deleteWallet(int id) async {
+    if (id == 1) throw ArgumentError('Wallet utama tidak dapat dihapus.');
+    final db = await database;
+    final count =
+        Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM ${DbConstants.transactions} WHERE wallet_id = ?',
+            [id],
+          ),
+        ) ??
+        0;
+    if (count > 0) {
+      throw StateError(
+        'Wallet masih memiliki transaksi dan tidak dapat dihapus.',
+      );
+    }
+    await db.delete(DbConstants.wallets, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<Map<int, double>> getWalletBalances() async {
+    final db = await database;
+    final wallets = await db.query(
+      DbConstants.wallets,
+      columns: ['id', 'initial_balance'],
+    );
+    final totals = await db.rawQuery('''
+      SELECT wallet_id,
+        SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END) AS movement
+      FROM ${DbConstants.transactions}
+      WHERE deleted_at IS NULL
+      GROUP BY wallet_id
+    ''');
+    final movements = {
+      for (final row in totals)
+        row['wallet_id']! as int: (row['movement'] as num?)?.toDouble() ?? 0,
+    };
+    return {
+      for (final row in wallets)
+        row['id']! as int:
+            (row['initial_balance'] as num).toDouble() +
+            (movements[row['id']! as int] ?? 0),
+    };
   }
 
   Future<int> insertTransaction(TransactionModel transaction) async {
@@ -592,7 +696,7 @@ class DatabaseHelper {
     final db = await database;
     return {
       'format': 'pundi-backup',
-      'version': 3,
+      'version': 4,
       'exported_at': DateTime.now().toUtc().toIso8601String(),
       'transactions': await db.query(DbConstants.transactions),
       'budgets': await db.query(DbConstants.budgets),
@@ -600,13 +704,14 @@ class DatabaseHelper {
       'recurring_rules': await db.query(DbConstants.recurringRules),
       'custom_categories': await db.query(DbConstants.customCategories),
       'savings_goals': await db.query(DbConstants.savingsGoals),
+      'wallets': await db.query(DbConstants.wallets),
     };
   }
 
   Future<void> restoreBackup(Map<String, Object?> backup) async {
     final version = backup['version'];
     if (backup['format'] != 'pundi-backup' ||
-        (version != 1 && version != 2 && version != 3)) {
+        (version != 1 && version != 2 && version != 3 && version != 4)) {
       throw const FormatException('Format cadangan Pundi tidak dikenali.');
     }
     final transactions = backup['transactions'];
@@ -663,6 +768,24 @@ class DatabaseHelper {
           DbConstants.savingsGoals,
           backup['savings_goals'],
         );
+      }
+      if (version == 4) {
+        await txn.delete(DbConstants.wallets);
+        await _restoreRows(txn, DbConstants.wallets, backup['wallets']);
+        if (Sqflite.firstIntValue(
+              await txn.rawQuery('SELECT COUNT(*) FROM ${DbConstants.wallets}'),
+            ) ==
+            0) {
+          await txn.insert(DbConstants.wallets, {
+            'id': 1,
+            'name': 'Tunai',
+            'icon_code': WalletModel.supportedIcons.first.codePoint,
+            'color_value': 0xFF6657D9,
+            'initial_balance': 0,
+            'is_archived': 0,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
       }
     });
   }

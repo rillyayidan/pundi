@@ -15,6 +15,7 @@ class TransactionModel {
     required this.amount,
     required this.category,
     required this.date,
+    this.walletId = 1,
     this.note = '',
     this.merchant,
     this.receiptText,
@@ -28,6 +29,7 @@ class TransactionModel {
   final double amount;
   final String category;
   final DateTime date;
+  final int walletId;
   final String note;
   final String? merchant;
   final String? receiptText;
@@ -43,6 +45,7 @@ class TransactionModel {
     double? amount,
     String? category,
     DateTime? date,
+    int? walletId,
     String? note,
     String? merchant,
     String? receiptText,
@@ -57,6 +60,7 @@ class TransactionModel {
     amount: amount ?? this.amount,
     category: category ?? this.category,
     date: date ?? this.date,
+    walletId: walletId ?? this.walletId,
     note: note ?? this.note,
     merchant: merchant ?? this.merchant,
     receiptText: receiptText ?? this.receiptText,
@@ -73,6 +77,7 @@ class TransactionModel {
     'amount': amount,
     'category': category,
     'date': date.toIso8601String(),
+    'wallet_id': walletId,
     'note': note,
     'merchant': merchant,
     'receipt_text': receiptText,
@@ -88,6 +93,7 @@ class TransactionModel {
         amount: (map['amount']! as num).toDouble(),
         category: map['category']! as String,
         date: DateTime.parse(map['date']! as String),
+        walletId: map['wallet_id'] as int? ?? 1,
         note: map['note'] as String? ?? '',
         merchant: map['merchant'] as String?,
         receiptText: map['receipt_text'] as String?,

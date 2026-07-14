@@ -7,6 +7,7 @@ import '../models/transaction_model.dart';
 import '../database/database_helper.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/category_provider.dart';
+import '../providers/wallet_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
@@ -90,6 +91,9 @@ class TransactionDetailScreen extends StatelessWidget {
       transactionId,
     );
     context.watch<CategoryProvider>();
+    final wallet = context.watch<WalletProvider>().walletFor(
+      transaction?.walletId ?? 1,
+    );
     if (transaction == null) {
       return const Scaffold(
         body: Center(child: Text('Transaksi tidak ditemukan')),
@@ -180,6 +184,12 @@ class TransactionDetailScreen extends StatelessWidget {
                   icon: Icons.category_outlined,
                   label: 'Kategori',
                   value: transaction.category,
+                ),
+                const Divider(height: 27),
+                _DetailRow(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'Wallet',
+                  value: wallet.name,
                 ),
                 const Divider(height: 27),
                 _DetailRow(

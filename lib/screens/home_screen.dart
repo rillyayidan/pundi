@@ -5,6 +5,7 @@ import '../models/transaction_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/app_features_provider.dart';
+import '../providers/wallet_provider.dart';
 import '../models/recurring_rule_model.dart';
 import '../models/savings_goal_model.dart';
 import '../utils/constants.dart';
@@ -37,6 +38,7 @@ class HomeScreen extends StatelessWidget {
     final transactions = context.watch<TransactionProvider>();
     final dashboard = context.watch<DashboardProvider>();
     final features = context.watch<AppFeaturesProvider>();
+    final wallets = context.watch<WalletProvider>();
     final now = DateTime.now();
     final thisMonth = transactions.allTransactions.where(
       (item) => item.date.year == now.year && item.date.month == now.month,
@@ -53,6 +55,7 @@ class HomeScreen extends StatelessWidget {
       onRefresh: () => Future.wait([
         context.read<TransactionProvider>().load(),
         context.read<DashboardProvider>().load(),
+        context.read<WalletProvider>().load(),
       ]),
       child: CustomScrollView(
         slivers: [
@@ -71,7 +74,7 @@ class HomeScreen extends StatelessWidget {
             sliver: SliverList.list(
               children: [
                 _BalanceCard(
-                  balance: transactions.balance,
+                  balance: wallets.totalBalance,
                   income: income,
                   expense: expense,
                 ),

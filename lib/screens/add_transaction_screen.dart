@@ -7,6 +7,7 @@ import '../models/transaction_model.dart';
 import '../models/split_part_model.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/wallet_provider.dart';
 import '../services/category_suggester_service.dart';
 import '../services/receipt_image_service.dart';
 import '../utils/constants.dart';
@@ -33,6 +34,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   late TransactionType _type;
   late String _category;
   late DateTime _date;
+  late int _walletId;
   bool _saving = false;
   bool _merchantRemembered = false;
   List<SplitPartModel>? _splitParts;
@@ -45,6 +47,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final parsed = widget.parsedBill;
     final transaction = widget.transaction;
     _type = transaction?.type ?? TransactionType.expense;
+    _walletId = transaction?.walletId ?? 1;
     _amountController = TextEditingController(
       text: transaction != null
           ? digitsOnlyRupiah(transaction.amount)
@@ -120,6 +123,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         amount: amount,
         category: _category,
         date: _date,
+        walletId: _walletId,
         note: _noteController.text.trim(),
         merchant: _merchantController.text.trim().isEmpty
             ? null
@@ -141,6 +145,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   amount: part.amount,
                   category: part.category,
                   date: _date,
+                  walletId: _walletId,
                   note: [
                     if (part.label.isNotEmpty) part.label,
                     if (_noteController.text.trim().isNotEmpty)
@@ -161,6 +166,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       }
       final dashboard = context.read<DashboardProvider>();
       await dashboard.load();
+      if (mounted) await context.read<WalletProvider>().load();
       if (_type == TransactionType.expense && mounted) {
         final limit = dashboard.limitFor(_category);
         final spent = dashboard.spentFor(_category);
@@ -380,6 +386,32 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               labelText: 'Merchant (opsional)',
               prefixIcon: Icon(Icons.storefront_outlined),
             ),
+          ),
+          const SizedBox(height: 14),
+          Consumer<WalletProvider>(
+            builder: (context, wallets, _) {
+              if (wallets.wallets.isEmpty) return const SizedBox.shrink();
+              if (!wallets.wallets.any((wallet) => wallet.id == _walletId)) {
+                _walletId = wallets.wallets.first.id!;
+              }
+              return DropdownButtonFormField<int>(
+                initialValue: _walletId,
+                decoration: const InputDecoration(
+                  labelText: 'Wallet',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                ),
+                items: wallets.wallets
+                    .map(
+                      (wallet) => DropdownMenuItem(
+                        value: wallet.id,
+                        child: Text(wallet.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _walletId = value ?? _walletId),
+              );
+            },
           ),
           const SizedBox(height: 22),
           const Text(

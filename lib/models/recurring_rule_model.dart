@@ -33,6 +33,7 @@ class RecurringRuleModel {
     required this.category,
     required this.frequency,
     required this.nextDate,
+    this.walletId = 1,
     this.merchant,
     this.note = '',
     this.isActive = true,
@@ -45,6 +46,7 @@ class RecurringRuleModel {
   final String category;
   final RecurrenceFrequency frequency;
   final DateTime nextDate;
+  final int walletId;
   final String? merchant;
   final String note;
   final bool isActive;
@@ -57,6 +59,7 @@ class RecurringRuleModel {
     String? category,
     RecurrenceFrequency? frequency,
     DateTime? nextDate,
+    int? walletId,
     String? merchant,
     String? note,
     bool? isActive,
@@ -68,6 +71,7 @@ class RecurringRuleModel {
     category: category ?? this.category,
     frequency: frequency ?? this.frequency,
     nextDate: nextDate ?? this.nextDate,
+    walletId: walletId ?? this.walletId,
     merchant: merchant ?? this.merchant,
     note: note ?? this.note,
     isActive: isActive ?? this.isActive,
@@ -79,6 +83,7 @@ class RecurringRuleModel {
     amount: amount,
     category: category,
     date: date ?? nextDate,
+    walletId: walletId,
     merchant: merchant,
     note: note,
   );
@@ -90,6 +95,7 @@ class RecurringRuleModel {
     'category': category,
     'frequency': frequency.name,
     'next_date': nextDate.toIso8601String(),
+    'wallet_id': walletId,
     'merchant': merchant,
     'note': note,
     'is_active': isActive ? 1 : 0,
@@ -106,6 +112,7 @@ class RecurringRuleModel {
           map['frequency']! as String,
         ),
         nextDate: DateTime.parse(map['next_date']! as String),
+        walletId: map['wallet_id'] as int? ?? 1,
         merchant: map['merchant'] as String?,
         note: map['note'] as String? ?? '',
         isActive: (map['is_active'] as int? ?? 1) == 1,
