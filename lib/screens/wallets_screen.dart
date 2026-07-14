@@ -6,6 +6,7 @@ import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
+import 'wallet_transfers_screen.dart';
 
 class WalletsScreen extends StatelessWidget {
   const WalletsScreen({super.key});
@@ -60,6 +61,15 @@ class WalletsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WalletTransfersScreen()),
+            ),
+            icon: const Icon(Icons.swap_horiz_rounded),
+            label: const Text('Transfer antar-wallet'),
+          ),
+          const SizedBox(height: 14),
           ...provider.wallets.map(
             (wallet) => Card(
               margin: const EdgeInsets.only(bottom: 9),

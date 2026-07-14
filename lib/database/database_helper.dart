@@ -11,6 +11,7 @@ import '../models/savings_goal_model.dart';
 import '../models/transaction_model.dart';
 import '../models/recurring_rule_model.dart';
 import '../models/wallet_model.dart';
+import '../models/wallet_transfer_model.dart';
 import 'db_constants.dart';
 
 class DatabaseHelper {
@@ -115,6 +116,7 @@ class DatabaseHelper {
     await _createFeatureTables(db);
     await _createIterationTables(db);
     await _createWalletTables(db);
+    await _createTransferTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -141,6 +143,9 @@ class DatabaseHelper {
       await db.execute(
         'ALTER TABLE ${DbConstants.recurringRules} ADD COLUMN wallet_id INTEGER NOT NULL DEFAULT 1',
       );
+    }
+    if (oldVersion < 6) {
+      await _createTransferTables(db);
     }
   }
 
@@ -241,6 +246,65 @@ class DatabaseHelper {
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
+  Future<void> _createTransferTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${DbConstants.walletTransfers} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        from_wallet_id INTEGER NOT NULL,
+        to_wallet_id INTEGER NOT NULL,
+        amount REAL NOT NULL CHECK(amount > 0),
+        date TEXT NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        CHECK(from_wallet_id != to_wallet_id),
+        FOREIGN KEY(from_wallet_id) REFERENCES ${DbConstants.wallets}(id),
+        FOREIGN KEY(to_wallet_id) REFERENCES ${DbConstants.wallets}(id)
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_wallet_transfers_date
+      ON ${DbConstants.walletTransfers}(date DESC)
+    ''');
+  }
+
+  Future<List<WalletTransferModel>> getWalletTransfers() async {
+    final db = await database;
+    final rows = await db.query(
+      DbConstants.walletTransfers,
+      orderBy: 'date DESC, id DESC',
+    );
+    return rows.map(WalletTransferModel.fromMap).toList(growable: false);
+  }
+
+  Future<int> saveWalletTransfer(WalletTransferModel transfer) async {
+    if (transfer.fromWalletId == transfer.toWalletId) {
+      throw ArgumentError('Wallet asal dan tujuan harus berbeda.');
+    }
+    final db = await database;
+    if (transfer.id == null) {
+      return db.insert(
+        DbConstants.walletTransfers,
+        transfer.toMap(includeId: false),
+      );
+    }
+    await db.update(
+      DbConstants.walletTransfers,
+      transfer.toMap(includeId: false),
+      where: 'id = ?',
+      whereArgs: [transfer.id],
+    );
+    return transfer.id!;
+  }
+
+  Future<void> deleteWalletTransfer(int id) async {
+    final db = await database;
+    await db.delete(
+      DbConstants.walletTransfers,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<List<WalletModel>> getWallets({bool includeArchived = false}) async {
     final db = await database;
     final rows = await db.query(
@@ -276,9 +340,17 @@ class DatabaseHelper {
           ),
         ) ??
         0;
-    if (count > 0) {
+    final transferCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM ${DbConstants.walletTransfers} WHERE from_wallet_id = ? OR to_wallet_id = ?',
+            [id, id],
+          ),
+        ) ??
+        0;
+    if (count > 0 || transferCount > 0) {
       throw StateError(
-        'Wallet masih memiliki transaksi dan tidak dapat dihapus.',
+        'Wallet masih memiliki transaksi atau transfer dan tidak dapat dihapus.',
       );
     }
     await db.delete(DbConstants.wallets, where: 'id = ?', whereArgs: [id]);
@@ -301,6 +373,20 @@ class DatabaseHelper {
       for (final row in totals)
         row['wallet_id']! as int: (row['movement'] as num?)?.toDouble() ?? 0,
     };
+    final transfers = await db.rawQuery('''
+      SELECT wallet_id, SUM(movement) AS movement FROM (
+        SELECT from_wallet_id AS wallet_id, -amount AS movement
+        FROM ${DbConstants.walletTransfers}
+        UNION ALL
+        SELECT to_wallet_id AS wallet_id, amount AS movement
+        FROM ${DbConstants.walletTransfers}
+      ) GROUP BY wallet_id
+    ''');
+    for (final row in transfers) {
+      final id = row['wallet_id']! as int;
+      movements[id] =
+          (movements[id] ?? 0) + ((row['movement'] as num?)?.toDouble() ?? 0);
+    }
     return {
       for (final row in wallets)
         row['id']! as int:
@@ -696,7 +782,7 @@ class DatabaseHelper {
     final db = await database;
     return {
       'format': 'pundi-backup',
-      'version': 4,
+      'version': 5,
       'exported_at': DateTime.now().toUtc().toIso8601String(),
       'transactions': await db.query(DbConstants.transactions),
       'budgets': await db.query(DbConstants.budgets),
@@ -705,13 +791,18 @@ class DatabaseHelper {
       'custom_categories': await db.query(DbConstants.customCategories),
       'savings_goals': await db.query(DbConstants.savingsGoals),
       'wallets': await db.query(DbConstants.wallets),
+      'wallet_transfers': await db.query(DbConstants.walletTransfers),
     };
   }
 
   Future<void> restoreBackup(Map<String, Object?> backup) async {
     final version = backup['version'];
     if (backup['format'] != 'pundi-backup' ||
-        (version != 1 && version != 2 && version != 3 && version != 4)) {
+        (version != 1 &&
+            version != 2 &&
+            version != 3 &&
+            version != 4 &&
+            version != 5)) {
       throw const FormatException('Format cadangan Pundi tidak dikenali.');
     }
     final transactions = backup['transactions'];
@@ -769,7 +860,7 @@ class DatabaseHelper {
           backup['savings_goals'],
         );
       }
-      if (version == 4) {
+      if (version == 4 || version == 5) {
         await txn.delete(DbConstants.wallets);
         await _restoreRows(txn, DbConstants.wallets, backup['wallets']);
         if (Sqflite.firstIntValue(
@@ -786,6 +877,14 @@ class DatabaseHelper {
             'created_at': DateTime.now().toIso8601String(),
           });
         }
+      }
+      if (version == 5) {
+        await txn.delete(DbConstants.walletTransfers);
+        await _restoreRows(
+          txn,
+          DbConstants.walletTransfers,
+          backup['wallet_transfers'],
+        );
       }
     });
   }

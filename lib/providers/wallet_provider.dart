@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../database/database_helper.dart';
 import '../models/wallet_model.dart';
+import '../models/wallet_transfer_model.dart';
 
 class WalletProvider extends ChangeNotifier {
   WalletProvider(this._database);
@@ -9,6 +10,7 @@ class WalletProvider extends ChangeNotifier {
   final DatabaseHelper _database;
   List<WalletModel> wallets = [];
   Map<int, double> balances = {};
+  List<WalletTransferModel> transfers = [];
   bool loading = false;
   String? error;
 
@@ -34,6 +36,7 @@ class WalletProvider extends ChangeNotifier {
     try {
       wallets = await _database.getWallets();
       balances = await _database.getWalletBalances();
+      transfers = await _database.getWalletTransfers();
       error = null;
     } catch (caught) {
       error = caught.toString();
@@ -52,6 +55,17 @@ class WalletProvider extends ChangeNotifier {
   Future<void> delete(WalletModel wallet) async {
     if (wallet.id == null) return;
     await _database.deleteWallet(wallet.id!);
+    await load();
+  }
+
+  Future<void> saveTransfer(WalletTransferModel transfer) async {
+    await _database.saveWalletTransfer(transfer);
+    await load();
+  }
+
+  Future<void> deleteTransfer(WalletTransferModel transfer) async {
+    if (transfer.id == null) return;
+    await _database.deleteWalletTransfer(transfer.id!);
     await load();
   }
 }
