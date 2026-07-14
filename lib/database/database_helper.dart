@@ -152,6 +152,11 @@ class DatabaseHelper {
     if (oldVersion < 7) {
       await _createDebtTables(db);
     }
+    if (oldVersion < 8) {
+      await db.execute(
+        'ALTER TABLE ${DbConstants.savingsGoals} ADD COLUMN wallet_id INTEGER NOT NULL DEFAULT 1',
+      );
+    }
   }
 
   Future<void> _createBudgetsTable(DatabaseExecutor db) => db.execute('''
@@ -219,6 +224,7 @@ class DatabaseHelper {
         current_amount REAL NOT NULL DEFAULT 0 CHECK(current_amount >= 0),
         target_date TEXT NOT NULL,
         color_value INTEGER NOT NULL,
+        wallet_id INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL
       )
     ''');
@@ -741,6 +747,37 @@ class DatabaseHelper {
   Future<void> deleteSavingsGoal(int id) async {
     final db = await database;
     await db.delete(DbConstants.savingsGoals, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> contributeToSavingsGoal(
+    SavingsGoalModel goal,
+    int fromWalletId,
+    double amount,
+  ) async {
+    if (goal.id == null || amount <= 0 || amount > goal.remaining + .5) {
+      throw ArgumentError('Nominal setoran target tidak valid.');
+    }
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.update(
+        DbConstants.savingsGoals,
+        {'current_amount': goal.currentAmount + amount},
+        where: 'id = ?',
+        whereArgs: [goal.id],
+      );
+      if (fromWalletId != goal.walletId) {
+        await txn.insert(
+          DbConstants.walletTransfers,
+          WalletTransferModel(
+            fromWalletId: fromWalletId,
+            toWalletId: goal.walletId,
+            amount: amount,
+            date: DateTime.now(),
+            note: 'Setoran target ${goal.name}',
+          ).toMap(includeId: false),
+        );
+      }
+    });
   }
 
   String _merchantKey(String merchant) => merchant

@@ -1,6 +1,6 @@
 abstract final class DbConstants {
   static const databaseName = 'pundi.db';
-  static const databaseVersion = 7;
+  static const databaseVersion = 8;
 
   static const transactions = 'transactions';
   static const budgets = 'budgets';

@@ -6,6 +6,7 @@ class SavingsGoalModel {
     required this.currentAmount,
     required this.targetDate,
     required this.colorValue,
+    this.walletId = 1,
     this.createdAt,
   });
 
@@ -15,6 +16,7 @@ class SavingsGoalModel {
   final double currentAmount;
   final DateTime targetDate;
   final int colorValue;
+  final int walletId;
   final DateTime? createdAt;
 
   double get progress =>
@@ -29,6 +31,7 @@ class SavingsGoalModel {
     double? currentAmount,
     DateTime? targetDate,
     int? colorValue,
+    int? walletId,
     DateTime? createdAt,
   }) => SavingsGoalModel(
     id: id ?? this.id,
@@ -37,6 +40,7 @@ class SavingsGoalModel {
     currentAmount: currentAmount ?? this.currentAmount,
     targetDate: targetDate ?? this.targetDate,
     colorValue: colorValue ?? this.colorValue,
+    walletId: walletId ?? this.walletId,
     createdAt: createdAt ?? this.createdAt,
   );
 
@@ -47,6 +51,7 @@ class SavingsGoalModel {
     'current_amount': currentAmount,
     'target_date': targetDate.toIso8601String(),
     'color_value': colorValue,
+    'wallet_id': walletId,
     'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
   };
 
@@ -58,6 +63,7 @@ class SavingsGoalModel {
         currentAmount: (map['current_amount']! as num).toDouble(),
         targetDate: DateTime.parse(map['target_date']! as String),
         colorValue: map['color_value']! as int,
+        walletId: map['wallet_id'] as int? ?? 1,
         createdAt: map['created_at'] == null
             ? null
             : DateTime.parse(map['created_at']! as String),

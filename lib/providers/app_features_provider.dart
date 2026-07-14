@@ -143,11 +143,13 @@ class AppFeaturesProvider extends ChangeNotifier {
     await refresh();
   }
 
-  Future<void> addGoalContribution(SavingsGoalModel goal, double amount) async {
+  Future<void> addGoalContribution(
+    SavingsGoalModel goal,
+    double amount,
+    int fromWalletId,
+  ) async {
     if (amount <= 0) return;
-    await _database.saveSavingsGoal(
-      goal.copyWith(currentAmount: goal.currentAmount + amount),
-    );
+    await _database.contributeToSavingsGoal(goal, fromWalletId, amount);
     await refresh();
   }
 

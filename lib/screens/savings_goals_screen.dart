@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/savings_goal_model.dart';
 import '../providers/app_features_provider.dart';
+import '../providers/wallet_provider.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
@@ -13,36 +14,71 @@ class SavingsGoalsScreen extends StatelessWidget {
 
   Future<void> _contribute(BuildContext context, SavingsGoalModel goal) async {
     final controller = TextEditingController();
-    final amount = await showDialog<double>(
+    final wallets = context.read<WalletProvider>().wallets;
+    if (wallets.isEmpty) return;
+    var sourceWalletId = wallets
+        .firstWhere(
+          (wallet) => wallet.id != goal.walletId,
+          orElse: () => wallets.first,
+        )
+        .id!;
+    final result = await showDialog<(double, int)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Tambah ke ${goal.name}'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(prefixText: 'Rp '),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Tambah ke ${goal.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(prefixText: 'Rp '),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<int>(
+                initialValue: sourceWalletId,
+                decoration: const InputDecoration(labelText: 'Dari wallet'),
+                items: wallets
+                    .map(
+                      (wallet) => DropdownMenuItem(
+                        value: wallet.id,
+                        child: Text(wallet.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) => setDialogState(
+                  () => sourceWalletId = value ?? sourceWalletId,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, (
+                parseRupiahInput(controller.text) ?? 0,
+                sourceWalletId,
+              )),
+              child: const Text('Transfer'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, parseRupiahInput(controller.text) ?? 0),
-            child: const Text('Tambahkan'),
-          ),
-        ],
       ),
     );
     controller.dispose();
-    if (amount != null && amount > 0 && context.mounted) {
+    if (result != null && result.$1 > 0 && context.mounted) {
       await context.read<AppFeaturesProvider>().addGoalContribution(
         goal,
-        amount,
+        result.$1,
+        result.$2,
       );
+      if (context.mounted) await context.read<WalletProvider>().load();
     }
   }
 
@@ -208,6 +244,7 @@ class _GoalEditorState extends State<_GoalEditor> {
   late final TextEditingController _name;
   late final TextEditingController _target;
   late DateTime _date;
+  late int _walletId;
 
   @override
   void initState() {
@@ -221,6 +258,7 @@ class _GoalEditorState extends State<_GoalEditor> {
     _date =
         widget.goal?.targetDate ??
         DateTime.now().add(const Duration(days: 180));
+    _walletId = widget.goal?.walletId ?? 1;
   }
 
   @override
@@ -241,6 +279,7 @@ class _GoalEditorState extends State<_GoalEditor> {
         currentAmount: widget.goal?.currentAmount ?? 0,
         targetDate: _date,
         colorValue: widget.goal?.colorValue ?? pundiViolet.toARGB32(),
+        walletId: _walletId,
         createdAt: widget.goal?.createdAt,
       ),
     );
@@ -248,65 +287,87 @@ class _GoalEditorState extends State<_GoalEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        MediaQuery.viewInsetsOf(context).bottom + 24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Target tabungan',
-              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Nama target'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _target,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Jumlah target',
-                prefixText: 'Rp ',
+  Widget build(BuildContext context) {
+    final wallets = context.watch<WalletProvider>().wallets;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Target tabungan',
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
               ),
-            ),
-            const SizedBox(height: 10),
-            ListTile(
-              tileColor: Theme.of(context).cardColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'Nama target'),
               ),
-              leading: const Icon(Icons.event_rounded),
-              title: const Text('Tanggal target'),
-              subtitle: Text(formatDate(_date)),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _date,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 3650)),
-                );
-                if (picked != null) setState(() => _date = picked);
-              },
-            ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: _save,
-              icon: const Icon(Icons.check_rounded),
-              label: const Text('Simpan target'),
-            ),
-          ],
+              const SizedBox(height: 10),
+              TextField(
+                controller: _target,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Jumlah target',
+                  prefixText: 'Rp ',
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (wallets.isNotEmpty)
+                DropdownButtonFormField<int>(
+                  initialValue: _walletId,
+                  decoration: const InputDecoration(
+                    labelText: 'Wallet tujuan',
+                    prefixIcon: Icon(Icons.savings_outlined),
+                  ),
+                  items: wallets
+                      .map(
+                        (wallet) => DropdownMenuItem(
+                          value: wallet.id,
+                          child: Text(wallet.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _walletId = value ?? _walletId),
+                ),
+              const SizedBox(height: 10),
+              ListTile(
+                tileColor: Theme.of(context).cardColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                leading: const Icon(Icons.event_rounded),
+                title: const Text('Tanggal target'),
+                subtitle: Text(formatDate(_date)),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) setState(() => _date = picked);
+                },
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _save,
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Simpan target'),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

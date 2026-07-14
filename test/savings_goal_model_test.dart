@@ -23,6 +23,7 @@ void main() {
       currentAmount: 1500000,
       targetDate: DateTime(2026, 12, 31),
       colorValue: 0xFF218C7A,
+      walletId: 2,
       createdAt: DateTime(2026, 7, 13),
     );
 
@@ -30,5 +31,6 @@ void main() {
     expect(decoded.name, goal.name);
     expect(decoded.currentAmount, goal.currentAmount);
     expect(decoded.targetDate, goal.targetDate);
+    expect(decoded.walletId, 2);
   });
 }
