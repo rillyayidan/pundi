@@ -14,6 +14,7 @@ import '../providers/debt_provider.dart';
 import '../services/backup_service.dart';
 import '../services/export_service.dart';
 import '../services/import_service.dart';
+import '../services/home_widget_service.dart';
 import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../widgets/budget_progress_bar.dart';
@@ -404,6 +405,21 @@ class SettingsScreen extends StatelessWidget {
                           }
                         }
                       : null,
+                ),
+                const Divider(height: 1, indent: 72),
+                ListTile(
+                  leading: const _SettingsIcon(icon: Icons.widgets_outlined),
+                  title: const Text(
+                    'Widget layar utama',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text('Saldo dan tombol catat cepat'),
+                  trailing: const Icon(Icons.add_to_home_screen_rounded),
+                  onTap: () => _run(
+                    context,
+                    HomeWidgetService().requestPin,
+                    'Permintaan widget dikirim ke launcher.',
+                  ),
                 ),
               ],
             ),

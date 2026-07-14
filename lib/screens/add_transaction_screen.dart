@@ -17,10 +17,16 @@ import '../widgets/category_picker.dart';
 import 'split_receipt_screen.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key, this.parsedBill, this.transaction});
+  const AddTransactionScreen({
+    super.key,
+    this.parsedBill,
+    this.transaction,
+    this.initialType,
+  });
 
   final ParsedBillModel? parsedBill;
   final TransactionModel? transaction;
+  final TransactionType? initialType;
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -46,7 +52,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.initState();
     final parsed = widget.parsedBill;
     final transaction = widget.transaction;
-    _type = transaction?.type ?? TransactionType.expense;
+    _type = transaction?.type ?? widget.initialType ?? TransactionType.expense;
     _walletId = transaction?.walletId ?? 1;
     _amountController = TextEditingController(
       text: transaction != null

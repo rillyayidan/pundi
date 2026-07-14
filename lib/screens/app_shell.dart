@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:provider/provider.dart';
 
+import '../models/transaction_model.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/wallet_provider.dart';
+import '../services/home_widget_service.dart';
 import '../utils/constants.dart';
 import 'add_transaction_screen.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
+import 'quick_add_sheet.dart';
 import 'scan_bill_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
@@ -19,6 +26,10 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+  final _homeWidget = HomeWidgetService();
+  StreamSubscription<Uri?>? _widgetClicks;
+  WalletProvider? _walletProvider;
+  bool _quickAddOpen = false;
 
   static const _pages = [
     HomeScreen(),
@@ -27,6 +38,63 @@ class _AppShellState extends State<AppShell> {
     StatisticsScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _widgetClicks = HomeWidget.widgetClicked.listen(_handleWidgetUri);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _handleWidgetUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<WalletProvider>();
+    if (!identical(provider, _walletProvider)) {
+      _walletProvider?.removeListener(_syncHomeWidget);
+      _walletProvider = provider..addListener(_syncHomeWidget);
+      _syncHomeWidget();
+    }
+  }
+
+  @override
+  void dispose() {
+    _widgetClicks?.cancel();
+    _walletProvider?.removeListener(_syncHomeWidget);
+    super.dispose();
+  }
+
+  void _syncHomeWidget() {
+    final provider = _walletProvider;
+    if (provider != null && !provider.loading) {
+      _homeWidget.syncBalance(provider.totalBalance);
+    }
+  }
+
+  void _handleWidgetUri(Uri? uri) {
+    final type = HomeWidgetService.typeFromUri(uri);
+    if (type == null || !mounted || _quickAddOpen) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showQuickAdd(type);
+    });
+  }
+
+  Future<void> _showQuickAdd([
+    TransactionType type = TransactionType.expense,
+  ]) async {
+    if (_quickAddOpen) return;
+    _quickAddOpen = true;
+    try {
+      final saved = await showQuickAddSheet(context, initialType: type);
+      if (saved == true && mounted) {
+        context.read<DashboardProvider>().load();
+      }
+    } finally {
+      _quickAddOpen = false;
+    }
+  }
 
   void _select(int value) {
     setState(() => _index = value);
@@ -59,16 +127,12 @@ class _AppShellState extends State<AppShell> {
             child: SafeArea(
               top: false,
               child: _AddButton(
-                onTap: () async {
-                  final saved = await Navigator.of(context).push<bool>(
-                    MaterialPageRoute(
-                      builder: (_) => const AddTransactionScreen(),
-                    ),
-                  );
-                  if (saved == true && context.mounted) {
-                    context.read<DashboardProvider>().load();
-                  }
-                },
+                onTap: _showQuickAdd,
+                onLongPress: () => Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => const AddTransactionScreen(),
+                  ),
+                ),
               ),
             ),
           ),
@@ -166,8 +230,9 @@ class _BottomDock extends StatelessWidget {
 }
 
 class _AddButton extends StatelessWidget {
-  const _AddButton({required this.onTap});
+  const _AddButton({required this.onTap, required this.onLongPress});
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -177,6 +242,7 @@ class _AddButton extends StatelessWidget {
     shadowColor: pundiCoral.withValues(alpha: .35),
     child: InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(20),
       child: const SizedBox(
         width: 58,

@@ -29,6 +29,7 @@ dependencies:
   image_cropper: ^12.2.1
   image: ^4.8.0
   cryptography: ^2.9.0
+  home_widget: ^0.9.3
 
 dev_dependencies:
   flutter_test:
