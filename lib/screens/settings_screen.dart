@@ -89,6 +89,71 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  Future<String?> _askBackupPassword(
+    BuildContext context, {
+    required bool confirm,
+  }) async {
+    final password = TextEditingController();
+    final confirmation = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(confirm ? 'Kunci cadangan' : 'Buka cadangan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: password,
+              autofocus: true,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                helperText: 'Minimal 8 karakter dan jangan sampai lupa',
+              ),
+            ),
+            if (confirm) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmation,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Ulangi password'),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, password.text),
+            child: Text(confirm ? 'Enkripsi' : 'Buka'),
+          ),
+        ],
+      ),
+    );
+    final confirmationValue = confirmation.text;
+    password.dispose();
+    confirmation.dispose();
+    if (value == null) return null;
+    if (value.length < 8 || (confirm && value != confirmationValue)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value.length < 8
+                  ? 'Password minimal 8 karakter.'
+                  : 'Konfirmasi password tidak sama.',
+            ),
+          ),
+        );
+      }
+      return null;
+    }
+    return value;
+  }
+
   @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<DashboardProvider>();
@@ -464,7 +529,7 @@ class SettingsScreen extends StatelessWidget {
                 ListTile(
                   leading: const _SettingsIcon(icon: Icons.backup_rounded),
                   title: const Text(
-                    'Cadangkan ke JSON',
+                    'Cadangkan terenkripsi',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: Text(
@@ -473,13 +538,21 @@ class SettingsScreen extends StatelessWidget {
                         : 'Terakhir ${formatDateTime(features.lastBackupAt!)}',
                   ),
                   trailing: const Icon(Icons.ios_share_rounded),
-                  onTap: () => _run(
-                    context,
-                    () => backup.shareBackup(
-                      onCreated: features.markBackupCreated,
-                    ),
-                    'Cadangan siap dibagikan.',
-                  ),
+                  onTap: () async {
+                    final password = await _askBackupPassword(
+                      context,
+                      confirm: true,
+                    );
+                    if (password == null || !context.mounted) return;
+                    await _run(
+                      context,
+                      () => backup.shareBackup(
+                        password,
+                        onCreated: features.markBackupCreated,
+                      ),
+                      'Cadangan terenkripsi siap dibagikan.',
+                    );
+                  },
                 ),
                 const Divider(height: 1, indent: 72),
                 ListTile(
@@ -491,7 +564,7 @@ class SettingsScreen extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: const Text(
-                    'Mengganti data saat ini dari berkas JSON',
+                    'Dari berkas .pundi atau JSON versi lama',
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
@@ -519,7 +592,7 @@ class SettingsScreen extends StatelessWidget {
                     }
                     final picked = await FilePicker.pickFiles(
                       type: FileType.custom,
-                      allowedExtensions: ['json'],
+                      allowedExtensions: ['pundi', 'json'],
                     );
                     final path = picked?.files.single.path;
                     if (path == null || !context.mounted) {
@@ -528,8 +601,27 @@ class SettingsScreen extends StatelessWidget {
                     final transactionProvider = context
                         .read<TransactionProvider>();
                     final dashboardProvider = context.read<DashboardProvider>();
+                    String? password;
+                    try {
+                      if (await backup.isEncryptedFile(path)) {
+                        if (!context.mounted) return;
+                        password = await _askBackupPassword(
+                          context,
+                          confirm: false,
+                        );
+                        if (password == null) return;
+                      }
+                    } catch (error) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Berkas tidak valid: $error')),
+                        );
+                      }
+                      return;
+                    }
+                    if (!context.mounted) return;
                     await _run(context, () async {
-                      await backup.restoreFromFile(path);
+                      await backup.restoreFromFile(path, password: password);
                       await transactionProvider.load();
                       await dashboardProvider.load();
                     }, 'Cadangan berhasil dipulihkan.');
