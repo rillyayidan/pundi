@@ -18,7 +18,9 @@ import 'settings_screen.dart';
 import 'statistics_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({super.key, this.enablePlatformIntegrations = true});
+
+  final bool enablePlatformIntegrations;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -42,15 +44,18 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
-    _widgetClicks = HomeWidget.widgetClicked.listen(_handleWidgetUri);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _handleWidgetUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
-    });
+    if (widget.enablePlatformIntegrations) {
+      _widgetClicks = HomeWidget.widgetClicked.listen(_handleWidgetUri);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        _handleWidgetUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
+      });
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!widget.enablePlatformIntegrations) return;
     final provider = context.read<WalletProvider>();
     if (!identical(provider, _walletProvider)) {
       _walletProvider?.removeListener(_syncHomeWidget);
@@ -109,25 +114,7 @@ class _AppShellState extends State<AppShell> {
       children: [
         SafeArea(
           bottom: false,
-          child: Stack(
-            children: List.generate(_pages.length, (pageIndex) {
-              final active = pageIndex == _index;
-              return Positioned.fill(
-                child: IgnorePointer(
-                  ignoring: !active,
-                  child: TickerMode(
-                    enabled: active,
-                    child: AnimatedOpacity(
-                      opacity: active ? 1 : 0,
-                      duration: const Duration(milliseconds: 210),
-                      curve: Curves.easeOutCubic,
-                      child: _pages[pageIndex],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
+          child: IndexedStack(index: _index, children: _pages),
         ),
         Positioned(
           left: 14,
@@ -201,6 +188,7 @@ class _BottomDock extends StatelessWidget {
             final selected = index == itemIndex;
             return Expanded(
               child: InkWell(
+                key: ValueKey('bottom-nav-$itemIndex'),
                 onTap: () => onSelect(itemIndex),
                 borderRadius: BorderRadius.circular(16),
                 child: AnimatedContainer(
