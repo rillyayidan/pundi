@@ -417,27 +417,44 @@ class SettingsScreen extends StatelessWidget {
                     await _run(context, () async {
                       final imported = await ImportService().parseCsv(path);
                       if (!context.mounted) return;
-                      final confirmed = await showDialog<bool>(
+                      final unique = transactions.withoutDuplicates(imported);
+                      final duplicateCount = imported.length - unique.length;
+                      final importAll = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
                           title: Text('Impor ${imported.length} transaksi?'),
-                          content: const Text(
-                            'Data CSV akan ditambahkan tanpa menghapus transaksi yang sudah ada.',
+                          content: Text(
+                            duplicateCount == 0
+                                ? 'Data CSV akan ditambahkan tanpa menghapus transaksi yang sudah ada.'
+                                : '$duplicateCount transaksi terindikasi ganda. Anda dapat melewatinya atau tetap mengimpor seluruh data.',
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.pop(context, false),
+                              onPressed: () => Navigator.pop(context),
                               child: const Text('Batal'),
                             ),
+                            if (duplicateCount > 0)
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Lewati duplikat'),
+                              ),
                             FilledButton(
                               onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Impor'),
+                              child: Text(
+                                duplicateCount > 0 ? 'Impor semua' : 'Impor',
+                              ),
                             ),
                           ],
                         ),
                       );
-                      if (confirmed != true) return;
-                      await transactions.addAll(imported);
+                      if (importAll == null) return;
+                      final selected = importAll ? imported : unique;
+                      if (selected.isEmpty) {
+                        throw const FormatException(
+                          'Semua transaksi pada CSV sudah pernah dicatat.',
+                        );
+                      }
+                      await transactions.addAll(selected);
                       await dashboard.load();
                       await features.refresh();
                     }, 'CSV berhasil diimpor.');

@@ -2,12 +2,15 @@ import 'package:flutter/foundation.dart';
 
 import '../database/database_helper.dart';
 import '../models/transaction_model.dart';
+import '../services/duplicate_detector_service.dart';
 import '../services/receipt_image_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   TransactionProvider(this._database);
 
   final DatabaseHelper _database;
+  final DuplicateDetectorService _duplicateDetector =
+      const DuplicateDetectorService();
   final List<TransactionModel> _allTransactions = [];
   final List<TransactionModel> _trashedTransactions = [];
   bool _loading = false;
@@ -57,6 +60,26 @@ class TransactionProvider extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  TransactionModel? findPotentialDuplicate(
+    TransactionModel candidate, {
+    Iterable<TransactionModel> additional = const [],
+  }) => _duplicateDetector.findMatch(candidate, [
+    ..._allTransactions,
+    ...additional,
+  ]);
+
+  List<TransactionModel> withoutDuplicates(
+    Iterable<TransactionModel> candidates,
+  ) {
+    final accepted = <TransactionModel>[];
+    for (final candidate in candidates) {
+      if (findPotentialDuplicate(candidate, additional: accepted) == null) {
+        accepted.add(candidate);
+      }
+    }
+    return accepted;
   }
 
   double get totalIncome => _allTransactions

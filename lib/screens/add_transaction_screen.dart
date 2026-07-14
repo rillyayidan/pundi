@@ -101,12 +101,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     setState(() => _saving = true);
     try {
       final amount = parseRupiahInput(_amountController.text)!;
-      final receiptImagePath =
-          widget.transaction?.receiptImagePath ??
-          await ReceiptImageService().persist(
-            widget.parsedBill?.sourceImagePath,
-          );
-      if (!mounted) return;
       final splitParts = _splitParts;
       if (splitParts != null &&
           (splitParts.fold<double>(0, (sum, part) => sum + part.amount) -
@@ -117,7 +111,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           'Total pembagian tidak sama dengan nominal transaksi.',
         );
       }
-      final transaction = TransactionModel(
+      var transaction = TransactionModel(
         id: widget.transaction?.id,
         type: _type,
         amount: amount,
@@ -130,10 +124,24 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             : _merchantController.text.trim(),
         receiptText:
             widget.parsedBill?.rawText ?? widget.transaction?.receiptText,
-        receiptImagePath: receiptImagePath,
+        receiptImagePath: widget.transaction?.receiptImagePath,
         createdAt: widget.transaction?.createdAt,
       );
       final provider = context.read<TransactionProvider>();
+      if (!_editing) {
+        final duplicate = provider.findPotentialDuplicate(transaction);
+        if (duplicate != null) {
+          final keep = await _confirmDuplicate(duplicate);
+          if (keep != true || !mounted) return;
+        }
+      }
+      final receiptImagePath =
+          widget.transaction?.receiptImagePath ??
+          await ReceiptImageService().persist(
+            widget.parsedBill?.sourceImagePath,
+          );
+      if (!mounted) return;
+      transaction = transaction.copyWith(receiptImagePath: receiptImagePath);
       if (_editing) {
         await provider.update(transaction);
       } else if (splitParts != null) {
@@ -208,6 +216,31 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       }
     }
   }
+
+  Future<bool?> _confirmDuplicate(
+    TransactionModel duplicate,
+  ) => showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      icon: const Icon(Icons.content_copy_rounded, color: pundiCoral),
+      title: const Text('Kemungkinan transaksi ganda'),
+      content: Text(
+        '${duplicate.merchant?.trim().isNotEmpty == true ? duplicate.merchant! : duplicate.category} '
+        'dengan nominal ${formatRupiah(duplicate.amount)} sudah tercatat pada '
+        '${formatDateTime(duplicate.date)}. Tetap simpan transaksi ini?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Tetap simpan'),
+        ),
+      ],
+    ),
+  );
 
   Future<void> _applyMerchantMemory() async {
     final merchant = _merchantController.text.trim();
