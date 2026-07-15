@@ -42,6 +42,14 @@ DatabaseHelper → SQLite on-device
 
 `DatabaseHelper` menggunakan migrasi versi sejak awal. Instalasi lama dimigrasikan satu kali dari SQLite biasa ke SQLCipher dengan kunci acak di secure storage. Restore JSON berjalan di dalam transaksi database agar kegagalan validasi tidak meninggalkan data setengah terpulihkan.
 
+## Dokumentasi pengembang
+
+- [Changelog](CHANGELOG.md)
+- [Panduan kontribusi](CONTRIBUTING.md)
+- [Panduan pengujian](docs/testing.md)
+- [Catatan privasi](docs/privacy.md)
+- [Checklist rilis](docs/release-checklist.md)
+
 ## Menjalankan
 
 Prasyarat: Flutter stable dengan Dart 3.8+, Android SDK, dan perangkat/emulator Android SDK 24+.
