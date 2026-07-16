@@ -127,12 +127,15 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: pundiLilac,
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(22),
             ),
             child: Row(
               children: [
-                const Icon(Icons.call_split_rounded, color: pundiViolet),
+                Icon(
+                  Icons.call_split_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -178,14 +181,14 @@ class _SplitReceiptScreenState extends State<SplitReceiptScreen> {
                       width: 34,
                       height: 34,
                       alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: pundiViolet,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
                         '${index + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                       ),

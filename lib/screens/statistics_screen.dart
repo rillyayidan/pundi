@@ -98,7 +98,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
     return Scaffold(
       body: RefreshIndicator(
-        color: pundiViolet,
+        color: Theme.of(context).colorScheme.primary,
         onRefresh: () => context.read<TransactionProvider>().load(),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 20, 18, 160),
@@ -127,14 +127,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
               decoration: BoxDecoration(
-                color: pundiLilac,
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(17),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.date_range_rounded,
-                    color: pundiViolet,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 20,
                   ),
                   const SizedBox(width: 10),
@@ -142,8 +142,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     child: Text(
                       '${formatDate(_range.start)} – ${formatDate(_range.end)}',
                       maxLines: 1,
-                      style: const TextStyle(
-                        color: pundiVioletDark,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -307,7 +307,9 @@ class _RangeOption extends StatelessWidget {
         duration: const Duration(milliseconds: 220),
         height: 44,
         decoration: BoxDecoration(
-          color: selected ? pundiViolet : Colors.transparent,
+          color: selected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,
@@ -317,7 +319,7 @@ class _RangeOption extends StatelessWidget {
             label,
             maxLines: 1,
             style: TextStyle(
-              color: selected ? Colors.white : null,
+              color: selected ? Theme.of(context).colorScheme.onPrimary : null,
               fontSize: 13,
               fontWeight: FontWeight.w900,
             ),
@@ -670,13 +672,13 @@ class _ChartEmpty extends StatelessWidget {
         Container(
           width: 58,
           height: 58,
-          decoration: const BoxDecoration(
-            color: pundiLilac,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.insights_rounded,
-            color: pundiViolet,
+            color: Theme.of(context).colorScheme.primary,
             size: 28,
           ),
         ),
