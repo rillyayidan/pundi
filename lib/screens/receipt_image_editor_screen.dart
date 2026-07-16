@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../services/receipt_image_editor_service.dart';
-import '../utils/constants.dart';
 
 class ReceiptImageEditorScreen extends StatefulWidget {
   const ReceiptImageEditorScreen({super.key, required this.sourcePath});
@@ -135,7 +134,9 @@ class _ReceiptImageEditorScreenState extends State<ReceiptImageEditorScreen> {
                           ),
                         ),
                         style: FilledButton.styleFrom(
-                          foregroundColor: pundiViolet,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
                         ),
                       ),
                     ),

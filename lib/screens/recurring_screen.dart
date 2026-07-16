@@ -32,8 +32,6 @@ class RecurringScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Transaksi berulang')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: fintechBlue,
-        foregroundColor: Colors.white,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const RecurringEditorScreen()),
@@ -50,13 +48,13 @@ class RecurringScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFE4DA),
+                      color: Theme.of(context).colorScheme.errorContainer,
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: Text(
                       '${features.dueRules.length} transaksi menunggu konfirmasi. Pundi tidak akan mencatatnya tanpa persetujuanmu.',
-                      style: const TextStyle(
-                        color: Color(0xFF702918),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -245,7 +243,10 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),
-            leading: const Icon(Icons.event_rounded, color: pundiViolet),
+            leading: Icon(
+              Icons.event_rounded,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             title: const Text('Jadwal berikutnya'),
             subtitle: Text(formatDate(_nextDate)),
             onTap: _pickDate,
@@ -272,7 +273,7 @@ class _RecurringEditorScreenState extends State<RecurringEditorScreen> {
               return DropdownButtonFormField<int>(
                 initialValue: _walletId,
                 decoration: const InputDecoration(
-                  labelText: 'Wallet',
+                  labelText: 'Sumber dana',
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined),
                 ),
                 items: provider.wallets
@@ -403,20 +404,24 @@ class _RecurringCard extends StatelessWidget {
 class _RecurringEmpty extends StatelessWidget {
   const _RecurringEmpty();
   @override
-  Widget build(BuildContext context) => const Center(
+  Widget build(BuildContext context) => Center(
     child: Padding(
-      padding: EdgeInsets.all(38),
+      padding: const EdgeInsets.all(38),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.event_repeat_rounded, size: 64, color: pundiViolet),
-          SizedBox(height: 14),
-          Text(
+          Icon(
+            Icons.event_repeat_rounded,
+            size: 64,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 14),
+          const Text(
             'Belum ada transaksi rutin',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
           ),
-          SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             'Buat pengingat untuk gaji, kos, cicilan, atau langganan.',
             textAlign: TextAlign.center,
           ),
