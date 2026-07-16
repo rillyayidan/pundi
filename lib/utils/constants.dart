@@ -22,6 +22,11 @@ const inkColor = Color(0xFF0F172A);
 const darkCanvas = Color(0xFF07111F);
 const darkCard = Color(0xFF111D2F);
 
+Color contrastColor(Color background) =>
+    ThemeData.estimateBrightnessForColor(background) == Brightness.dark
+    ? Colors.white
+    : inkColor;
+
 const predefinedExpenseCategories = <CategoryModel>[
   CategoryModel(
     name: 'Makanan',

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../models/transaction_model.dart';
 import '../providers/category_provider.dart';
-import '../utils/constants.dart';
 
 class CategoryPicker extends StatelessWidget {
   const CategoryPicker({
@@ -37,12 +36,12 @@ class CategoryPicker extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: selected
-                      ? pundiViolet
+                      ? Theme.of(context).colorScheme.primary
                       : category.color.withValues(alpha: .1),
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(
                     color: selected
-                        ? pundiVioletDark
+                        ? Theme.of(context).colorScheme.primary
                         : category.color.withValues(alpha: .18),
                   ),
                 ),
@@ -52,14 +51,16 @@ class CategoryPicker extends StatelessWidget {
                     Icon(
                       category.icon,
                       size: 17,
-                      color: selected ? Colors.white : category.color,
+                      color: selected
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : category.color,
                     ),
                     const SizedBox(width: 7),
                     Text(
                       category.name,
                       style: TextStyle(
                         color: selected
-                            ? Colors.white
+                            ? Theme.of(context).colorScheme.onPrimary
                             : Theme.of(context).colorScheme.onSurface,
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
