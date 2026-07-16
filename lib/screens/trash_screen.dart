@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/transaction_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/wallet_provider.dart';
 import '../utils/constants.dart';
 import '../utils/date_formatter.dart';
 import '../widgets/transaction_tile.dart';
@@ -47,6 +48,9 @@ class TrashScreen extends StatelessWidget {
                                   await context
                                       .read<DashboardProvider>()
                                       .load();
+                                  if (context.mounted) {
+                                    await context.read<WalletProvider>().load();
+                                  }
                                 }
                               },
                               child: const Text('Pulihkan'),

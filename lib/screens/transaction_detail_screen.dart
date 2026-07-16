@@ -53,8 +53,11 @@ class TransactionDetailScreen extends StatelessWidget {
     }
     await context.read<DashboardProvider>().load();
     if (!context.mounted) return;
+    await context.read<WalletProvider>().load();
+    if (!context.mounted) return;
     final provider = context.read<TransactionProvider>();
     final dashboard = context.read<DashboardProvider>();
+    final wallets = context.read<WalletProvider>();
     final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context, true);
     messenger.showSnackBar(
@@ -64,7 +67,7 @@ class TransactionDetailScreen extends StatelessWidget {
           label: 'Urungkan',
           onPressed: () async {
             await provider.restore(transaction.id!);
-            await dashboard.load();
+            await Future.wait([dashboard.load(), wallets.load()]);
           },
         ),
       ),
@@ -188,7 +191,7 @@ class TransactionDetailScreen extends StatelessWidget {
                 const Divider(height: 27),
                 _DetailRow(
                   icon: Icons.account_balance_wallet_outlined,
-                  label: 'Wallet',
+                  label: 'Sumber dana',
                   value: wallet.name,
                 ),
                 const Divider(height: 27),
@@ -329,10 +332,14 @@ class _DetailRow extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: pundiLilac,
+          color: Theme.of(context).colorScheme.primaryContainer,
           borderRadius: BorderRadius.circular(13),
         ),
-        child: Icon(icon, color: pundiViolet, size: 20),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 20,
+        ),
       ),
       const SizedBox(width: 13),
       Expanded(
