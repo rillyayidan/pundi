@@ -40,7 +40,7 @@ class SavingsGoalsScreen extends StatelessWidget {
               const SizedBox(height: 10),
               DropdownButtonFormField<int>(
                 initialValue: sourceWalletId,
-                decoration: const InputDecoration(labelText: 'Dari wallet'),
+                decoration: const InputDecoration(labelText: 'Dari sumber'),
                 items: wallets
                     .map(
                       (wallet) => DropdownMenuItem(
@@ -88,8 +88,6 @@ class SavingsGoalsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Target tabungan')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: fintechBlue,
-        foregroundColor: Colors.white,
         onPressed: () => showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
@@ -210,7 +208,7 @@ class SavingsGoalsScreen extends StatelessWidget {
                           style: TextStyle(
                             color: goal.remaining <= 0
                                 ? successTeal
-                                : pundiViolet,
+                                : Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -325,7 +323,7 @@ class _GoalEditorState extends State<_GoalEditor> {
                 DropdownButtonFormField<int>(
                   initialValue: _walletId,
                   decoration: const InputDecoration(
-                    labelText: 'Wallet tujuan',
+                    labelText: 'Sumber tujuan',
                     prefixIcon: Icon(Icons.savings_outlined),
                   ),
                   items: wallets

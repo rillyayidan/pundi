@@ -205,19 +205,22 @@ class SettingsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFE4DA),
+                color: Theme.of(context).colorScheme.errorContainer,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: pundiCoral),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       '${dashboard.overBudgetCategories.join(', ')} melewati anggaran. Tekan pengeluaran kategori ini sampai bulan berikutnya.',
-                      style: const TextStyle(
-                        color: Color(0xFF702918),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -261,11 +264,11 @@ class SettingsScreen extends StatelessWidget {
                     icon: Icons.account_balance_wallet_rounded,
                   ),
                   title: const Text(
-                    'Wallet & akun',
+                    'Sumber dana',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: Text(
-                    '${walletProvider.wallets.length} wallet · ${formatRupiah(walletProvider.totalBalance)}',
+                    '${walletProvider.wallets.length} sumber · ${formatRupiah(walletProvider.totalBalance)}',
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () async {
@@ -437,14 +440,17 @@ class SettingsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(15),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: pundiLilac,
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.backup_rounded, color: pundiViolet),
-                  SizedBox(width: 11),
-                  Expanded(
+                  Icon(
+                    Icons.backup_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 11),
+                  const Expanded(
                     child: Text(
                       'Ada data baru yang belum dicadangkan. Buat JSON agar aman saat aplikasi dihapus atau HP direset.',
                       style: TextStyle(fontWeight: FontWeight.w700),
@@ -537,6 +543,7 @@ class SettingsScreen extends StatelessWidget {
                       }
                       await transactions.addAll(selected);
                       await dashboard.load();
+                      await walletProvider.load();
                       await features.refresh();
                     }, 'CSV berhasil diimpor.');
                   },
@@ -640,6 +647,7 @@ class SettingsScreen extends StatelessWidget {
                       await backup.restoreFromFile(path, password: password);
                       await transactionProvider.load();
                       await dashboardProvider.load();
+                      await walletProvider.load();
                     }, 'Cadangan berhasil dipulihkan.');
                   },
                 ),
