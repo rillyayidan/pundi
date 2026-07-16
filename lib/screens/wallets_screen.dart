@@ -15,10 +15,8 @@ class WalletsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<WalletProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Wallet & akun')),
+      appBar: AppBar(title: const Text('Rincian sumber dana')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: fintechBlue,
-        foregroundColor: Colors.white,
         onPressed: () => showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
@@ -26,7 +24,7 @@ class WalletsScreen extends StatelessWidget {
           builder: (_) => const _WalletEditor(),
         ),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Wallet baru'),
+        label: const Text('Tambah sumber'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
@@ -41,7 +39,7 @@ class WalletsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'TOTAL SEMUA WALLET',
+                  'TOTAL DANA',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 11,
@@ -67,7 +65,7 @@ class WalletsScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const WalletTransfersScreen()),
             ),
             icon: const Icon(Icons.swap_horiz_rounded),
-            label: const Text('Transfer antar-wallet'),
+            label: const Text('Transfer antar-sumber'),
           ),
           const SizedBox(height: 14),
           ...provider.wallets.map(
@@ -87,46 +85,50 @@ class WalletsScreen extends StatelessWidget {
                   wallet.name,
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
-                subtitle: Text(
-                  'Saldo awal ${formatRupiah(wallet.initialBalance)}',
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Saldo saat ini ${formatRupiah(provider.balanceFor(wallet.id!))}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text('Saldo awal ${formatRupiah(wallet.initialBalance)}'),
+                    ],
+                  ),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      formatRupiah(provider.balanceFor(wallet.id!)),
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                    PopupMenuButton<String>(
-                      onSelected: (value) async {
-                        if (value == 'edit') {
-                          await showModalBottomSheet<void>(
-                            context: context,
-                            isScrollControlled: true,
-                            showDragHandle: true,
-                            builder: (_) => _WalletEditor(wallet: wallet),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      await showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        showDragHandle: true,
+                        builder: (_) => _WalletEditor(wallet: wallet),
+                      );
+                    } else {
+                      try {
+                        await provider.delete(wallet);
+                      } catch (error) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.toString())),
                           );
-                        } else {
-                          try {
-                            await provider.delete(wallet);
-                          } catch (error) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(error.toString())),
-                              );
-                            }
-                          }
                         }
-                      },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        if (wallet.id != 1)
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('Hapus'),
-                          ),
-                      ],
-                    ),
+                      }
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    if (wallet.id != 1)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Hapus'),
+                      ),
                   ],
                 ),
               ),
@@ -209,14 +211,17 @@ class _WalletEditorState extends State<_WalletEditor> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Detail wallet',
+              'Detail sumber dana',
               style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 14),
             TextField(
               controller: _name,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Nama wallet'),
+              decoration: const InputDecoration(
+                labelText: 'Nama sumber dana',
+                hintText: 'Contoh: Tunai, BCA, BRI',
+              ),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -235,10 +240,12 @@ class _WalletEditorState extends State<_WalletEditor> {
                   .map(
                     (icon) => IconButton.filled(
                       style: IconButton.styleFrom(
-                        backgroundColor: _icon == icon ? _color : pundiLilac,
+                        backgroundColor: _icon == icon
+                            ? _color
+                            : Theme.of(context).colorScheme.primaryContainer,
                         foregroundColor: _icon == icon
-                            ? Colors.white
-                            : pundiViolet,
+                            ? contrastColor(_color)
+                            : Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                       onPressed: () => setState(() => _icon = icon),
                       icon: Icon(icon),
@@ -275,7 +282,7 @@ class _WalletEditorState extends State<_WalletEditor> {
             FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.check_rounded),
-              label: const Text('Simpan wallet'),
+              label: const Text('Simpan sumber dana'),
             ),
           ],
         ),

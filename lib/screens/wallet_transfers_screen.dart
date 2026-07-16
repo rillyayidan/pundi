@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../models/wallet_transfer_model.dart';
 import '../providers/wallet_provider.dart';
-import '../utils/constants.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/date_formatter.dart';
 
@@ -15,10 +14,8 @@ class WalletTransfersScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<WalletProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Transfer antar-wallet')),
+      appBar: AppBar(title: const Text('Transfer antar-sumber')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: fintechBlue,
-        foregroundColor: Colors.white,
         onPressed: provider.wallets.length < 2
             ? null
             : () => Navigator.push(
@@ -33,7 +30,7 @@ class WalletTransfersScreen extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.all(38),
                 child: Text(
-                  'Buat minimal dua wallet sebelum melakukan transfer.',
+                  'Buat minimal dua sumber dana sebelum melakukan transfer.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -50,9 +47,14 @@ class WalletTransfersScreen extends StatelessWidget {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 9),
                   child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: pundiLilac,
-                      child: Icon(Icons.swap_horiz_rounded, color: pundiViolet),
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
+                      child: Icon(
+                        Icons.swap_horiz_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                     title: Text(
                       '${from.name} → ${to.name}',
@@ -167,7 +169,7 @@ class _TransferEditorScreenState extends State<TransferEditorScreen> {
           children: [
             DropdownButtonFormField<int>(
               initialValue: _fromWalletId,
-              decoration: const InputDecoration(labelText: 'Dari wallet'),
+              decoration: const InputDecoration(labelText: 'Dari sumber'),
               items: wallets
                   .map(
                     (wallet) => DropdownMenuItem(
@@ -181,7 +183,7 @@ class _TransferEditorScreenState extends State<TransferEditorScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _toWalletId,
-              decoration: const InputDecoration(labelText: 'Ke wallet'),
+              decoration: const InputDecoration(labelText: 'Ke sumber'),
               items: wallets
                   .map(
                     (wallet) => DropdownMenuItem(
@@ -192,7 +194,7 @@ class _TransferEditorScreenState extends State<TransferEditorScreen> {
                   .toList(),
               onChanged: (value) => setState(() => _toWalletId = value!),
               validator: (_) => _fromWalletId == _toWalletId
-                  ? 'Wallet tujuan harus berbeda'
+                  ? 'Sumber tujuan harus berbeda'
                   : null,
             ),
             const SizedBox(height: 12),
