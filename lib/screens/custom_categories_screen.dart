@@ -15,8 +15,6 @@ class CustomCategoriesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Kategori buatanmu')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: fintechBlue,
-        foregroundColor: Colors.white,
         onPressed: () => showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
@@ -208,10 +206,12 @@ class _CategoryEditorState extends State<_CategoryEditor> {
                   .map(
                     (icon) => IconButton.filled(
                       style: IconButton.styleFrom(
-                        backgroundColor: _icon == icon ? _color : pundiLilac,
+                        backgroundColor: _icon == icon
+                            ? _color
+                            : Theme.of(context).colorScheme.primaryContainer,
                         foregroundColor: _icon == icon
-                            ? Colors.white
-                            : pundiViolet,
+                            ? contrastColor(_color)
+                            : Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                       onPressed: () => setState(() => _icon = icon),
                       icon: Icon(icon),

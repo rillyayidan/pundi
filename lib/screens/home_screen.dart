@@ -16,6 +16,7 @@ import '../widgets/transaction_tile.dart';
 import 'transaction_detail_screen.dart';
 import 'recurring_screen.dart';
 import 'savings_goals_screen.dart';
+import 'wallets_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -30,7 +31,10 @@ class HomeScreen extends StatelessWidget {
     if (!context.mounted) return;
     await context.read<AppFeaturesProvider>().advanceRecurring(rule);
     if (!context.mounted) return;
-    await context.read<DashboardProvider>().load();
+    await Future.wait([
+      context.read<DashboardProvider>().load(),
+      context.read<WalletProvider>().load(),
+    ]);
   }
 
   @override
@@ -51,7 +55,7 @@ class HomeScreen extends StatelessWidget {
         .fold<double>(0, (sum, item) => sum + item.amount);
 
     return RefreshIndicator(
-      color: pundiViolet,
+      color: Theme.of(context).colorScheme.primary,
       onRefresh: () => Future.wait([
         context.read<TransactionProvider>().load(),
         context.read<DashboardProvider>().load(),
@@ -77,6 +81,15 @@ class HomeScreen extends StatelessWidget {
                   balance: wallets.totalBalance,
                   income: income,
                   expense: expense,
+                  sourceCount: wallets.wallets.length,
+                  onTap: () async {
+                    await wallets.load();
+                    if (!context.mounted) return;
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WalletsScreen()),
+                    );
+                  },
                 ),
                 if (features.dueRules.isNotEmpty) ...[
                   const SizedBox(height: 14),
@@ -278,7 +291,7 @@ class _Header extends StatelessWidget {
             decoration: BoxDecoration(
               color: dueCount > 0
                   ? dangerRed.withValues(alpha: .12)
-                  : pundiLilac,
+                  : Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(15),
             ),
             child: Stack(
@@ -288,7 +301,9 @@ class _Header extends StatelessWidget {
                   dueCount > 0
                       ? Icons.notifications_active_rounded
                       : Icons.notifications_none_rounded,
-                  color: dueCount > 0 ? dangerRed : fintechBlue,
+                  color: dueCount > 0
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.primary,
                 ),
                 if (dueCount > 0)
                   Positioned(
@@ -337,14 +352,17 @@ class _DueRecurringCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: pundiLilac,
+      color: Theme.of(context).colorScheme.primaryContainer,
       borderRadius: BorderRadius.circular(24),
     ),
     child: Column(
       children: [
         Row(
           children: [
-            const Icon(Icons.event_repeat_rounded, color: pundiViolet),
+            Icon(
+              Icons.event_repeat_rounded,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 11),
             Expanded(
               child: Column(
@@ -391,14 +409,17 @@ class _BackupNudge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
-      color: pundiAmber.withValues(alpha: .24),
+      color: Theme.of(context).colorScheme.tertiaryContainer,
       borderRadius: BorderRadius.circular(22),
     ),
-    child: const Row(
+    child: Row(
       children: [
-        Icon(Icons.backup_rounded, color: Color(0xFF8A5D00)),
-        SizedBox(width: 11),
-        Expanded(
+        Icon(
+          Icons.backup_rounded,
+          color: Theme.of(context).colorScheme.onTertiaryContainer,
+        ),
+        const SizedBox(width: 11),
+        const Expanded(
           child: Text(
             'Data baru belum dicadangkan. Buka Atur untuk membuat backup terenkripsi.',
             style: TextStyle(fontWeight: FontWeight.w700),
@@ -417,12 +438,15 @@ class _ForecastCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: pundiLilac,
+      color: Theme.of(context).colorScheme.primaryContainer,
       borderRadius: BorderRadius.circular(22),
     ),
     child: Row(
       children: [
-        const Icon(Icons.auto_graph_rounded, color: pundiViolet),
+        Icon(
+          Icons.auto_graph_rounded,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         const SizedBox(width: 11),
         Expanded(
           child: Text.rich(
@@ -528,7 +552,9 @@ class _MonthlyInsights extends StatelessWidget {
                     ? 'Belum ada pembanding'
                     : '${change.abs().toStringAsFixed(0)}% ${change >= 0 ? 'naik' : 'turun'}',
                 caption: 'vs bulan lalu',
-                color: change != null && change > 0 ? pundiCoral : successTeal,
+                color: change != null && change > 0
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).colorScheme.secondary,
               ),
             ),
             const SizedBox(width: 9),
@@ -537,7 +563,7 @@ class _MonthlyInsights extends StatelessWidget {
                 icon: Icons.category_rounded,
                 title: biggest ?? 'Belum terlihat',
                 caption: 'kenaikan terbesar',
-                color: pundiViolet,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ],
@@ -548,13 +574,13 @@ class _MonthlyInsights extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: dangerRed.withValues(alpha: .09),
+              color: Theme.of(context).colorScheme.errorContainer,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Text(
               'Tidak biasa: ${dashboard.unusualCategories.join(', ')} diproyeksikan naik setidaknya 50% dari rata-rata 3 bulan.',
-              style: const TextStyle(
-                color: dangerRed,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onErrorContainer,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -566,12 +592,15 @@ class _MonthlyInsights extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: pundiAmber.withValues(alpha: .22),
+              color: Theme.of(context).colorScheme.tertiaryContainer,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Text(
               '${(dashboard.weekendExpenseShare * 100).round()}% pengeluaran 90 hari terakhir terjadi saat akhir pekan.',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onTertiaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -621,67 +650,157 @@ class _BalanceCard extends StatelessWidget {
     required this.balance,
     required this.income,
     required this.expense,
+    required this.sourceCount,
+    required this.onTap,
   });
   final double balance;
   final double income;
   final double expense;
+  final int sourceCount;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [fintechNavy, Color(0xFF164E9A), fintechBlue],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
-        BoxShadow(
-          color: fintechBlue.withValues(alpha: .2),
-          blurRadius: 28,
-          offset: const Offset(0, 12),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Lihat rincian saldo per sumber dana',
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [fintechNavy, Color(0xFF164E9A), fintechBlue],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: fintechBlue.withValues(alpha: .2),
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
         ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'SALDO TERSEDIA',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.25,
+              Row(
+                children: [
+                  const Text(
+                    'SALDO TERSEDIA',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.25,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          color: Colors.white70,
+                          size: 13,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'OFFLINE',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: .7,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: balance),
+                duration: const Duration(milliseconds: 650),
+                curve: Curves.easeOutCubic,
+                builder: (_, value, _) => FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    formatRupiah(value),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 34,
+                      height: 1,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.2,
+                    ),
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: Colors.white70,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    'Lihat rincian $sourceCount sumber dana',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .1),
-                  borderRadius: BorderRadius.circular(99),
+                  color: Colors.white.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white12),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
-                      Icons.shield_outlined,
-                      color: Colors.white70,
-                      size: 13,
+                    Expanded(
+                      child: _MoneyStat(
+                        icon: Icons.south_west_rounded,
+                        label: 'Pemasukan',
+                        value: income,
+                        color: const Color(0xFF5EEAD4),
+                      ),
                     ),
-                    SizedBox(width: 4),
-                    Text(
-                      'OFFLINE',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: .7,
+                    Container(width: 1, height: 38, color: Colors.white12),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _MoneyStat(
+                        icon: Icons.north_east_rounded,
+                        label: 'Pengeluaran',
+                        value: expense,
+                        color: const Color(0xFFFDA4AF),
                       ),
                     ),
                   ],
@@ -689,58 +808,7 @@ class _BalanceCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: balance),
-            duration: const Duration(milliseconds: 650),
-            curve: Curves.easeOutCubic,
-            builder: (_, value, _) => FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                formatRupiah(value),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 34,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.2,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .08),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _MoneyStat(
-                    icon: Icons.south_west_rounded,
-                    label: 'Pemasukan',
-                    value: income,
-                    color: const Color(0xFF5EEAD4),
-                  ),
-                ),
-                Container(width: 1, height: 38, color: Colors.white12),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _MoneyStat(
-                    icon: Icons.north_east_rounded,
-                    label: 'Pengeluaran',
-                    value: expense,
-                    color: const Color(0xFFFDA4AF),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     ),
   );
@@ -806,9 +874,11 @@ class _BudgetWarning extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: dangerRed.withValues(alpha: .09),
+        color: Theme.of(context).colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: dangerRed.withValues(alpha: .2)),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.error.withValues(alpha: .35),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -817,20 +887,23 @@ class _BudgetWarning extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: dangerRed,
+              color: Theme.of(context).colorScheme.error,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.priority_high_rounded, color: Colors.white),
+            child: Icon(
+              Icons.priority_high_rounded,
+              color: Theme.of(context).colorScheme.onError,
+            ),
           ),
           const SizedBox(width: 13),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Anggaran terlewati',
                   style: TextStyle(
-                    color: dangerRed,
+                    color: Theme.of(context).colorScheme.onErrorContainer,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -838,7 +911,10 @@ class _BudgetWarning extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${names.join(', ')} sudah melewati batas bulan ini. Sebaiknya tekan pengeluaran kategori ini sampai periode berikutnya.',
-                  style: const TextStyle(color: dangerRed, height: 1.35),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                    height: 1.35,
+                  ),
                 ),
               ],
             ),
@@ -908,11 +984,11 @@ class _EmptyBudget extends StatelessWidget {
       color: Theme.of(context).cardColor,
       borderRadius: BorderRadius.circular(26),
     ),
-    child: const Row(
+    child: Row(
       children: [
-        Icon(Icons.flag_outlined, color: pundiViolet),
-        SizedBox(width: 13),
-        Expanded(
+        Icon(Icons.flag_outlined, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 13),
+        const Expanded(
           child: Text(
             'Belum ada anggaran. Kamu bisa mengaturnya dari menu Atur.',
           ),
@@ -936,13 +1012,13 @@ class _EmptyTransactions extends StatelessWidget {
         Container(
           width: 62,
           height: 62,
-          decoration: const BoxDecoration(
-            color: pundiLilac,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.savings_outlined,
-            color: pundiViolet,
+            color: Theme.of(context).colorScheme.primary,
             size: 30,
           ),
         ),

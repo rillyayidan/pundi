@@ -62,6 +62,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               itemCount: _pages.length,
               itemBuilder: (context, index) {
                 final page = _pages[index];
+                final accent =
+                    Theme.of(context).brightness == Brightness.dark &&
+                        page.$4 == pundiViolet
+                    ? Theme.of(context).colorScheme.primary
+                    : page.$4;
                 return Padding(
                   padding: const EdgeInsets.all(34),
                   child: Column(
@@ -71,10 +76,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         width: 128,
                         height: 128,
                         decoration: BoxDecoration(
-                          color: page.$4.withValues(alpha: .14),
+                          color: accent.withValues(alpha: .14),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(page.$1, size: 62, color: page.$4),
+                        child: Icon(page.$1, size: 62, color: accent),
                       ),
                       const SizedBox(height: 34),
                       Text(
@@ -108,7 +113,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 height: 8,
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: index == _page ? pundiViolet : pundiLilac,
+                  color: index == _page
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),

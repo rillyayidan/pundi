@@ -371,8 +371,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       decoration: BoxDecoration(
                         color: selected
                             ? type == TransactionType.expense
-                                  ? pundiCoral
-                                  : successTeal
+                                  ? Theme.of(context).colorScheme.error
+                                  : Theme.of(context).colorScheme.secondary
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -383,7 +383,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                             : 'Pemasukan',
                         maxLines: 1,
                         style: TextStyle(
-                          color: selected ? Colors.white : null,
+                          color: selected
+                              ? type == TransactionType.expense
+                                    ? Theme.of(context).colorScheme.onError
+                                    : Theme.of(context).colorScheme.onSecondary
+                              : null,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -436,7 +440,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               return DropdownButtonFormField<int>(
                 initialValue: _walletId,
                 decoration: const InputDecoration(
-                  labelText: 'Wallet',
+                  labelText: 'Sumber dana',
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined),
                 ),
                 items: wallets.wallets
@@ -465,15 +469,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           ),
           if (_merchantRemembered) ...[
             const SizedBox(height: 10),
-            const Row(
+            Row(
               children: [
-                Icon(Icons.auto_awesome_rounded, color: pundiViolet, size: 18),
-                SizedBox(width: 7),
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 18,
+                ),
+                const SizedBox(width: 7),
                 Expanded(
                   child: Text(
                     'Kategori dipilih dari koreksi merchant sebelumnya.',
                     style: TextStyle(
-                      color: pundiVioletDark,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -491,17 +499,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 decoration: BoxDecoration(
                   color: _splitParts == null
                       ? Theme.of(context).cardColor
-                      : pundiLilac,
+                      : Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: _splitParts == null
                         ? Theme.of(context).colorScheme.outlineVariant
-                        : pundiViolet.withValues(alpha: .35),
+                        : Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.call_split_rounded, color: pundiViolet),
+                    Icon(
+                      Icons.call_split_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(width: 11),
                     Expanded(
                       child: Column(

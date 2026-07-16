@@ -85,7 +85,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     final categories = [...expenseCategories, ...incomeCategories];
     return Scaffold(
       body: RefreshIndicator(
-        color: pundiViolet,
+        color: Theme.of(context).colorScheme.primary,
         onRefresh: () => provider.load(keepFilters: true),
         child: CustomScrollView(
           slivers: [
@@ -146,13 +146,13 @@ class _HistoryScreenState extends State<HistoryScreen>
                         decoration: BoxDecoration(
                           color: provider.filterCategory == null
                               ? Theme.of(context).cardColor
-                              : fintechBlue,
+                              : Theme.of(context).colorScheme.primary,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
                             color: provider.filterCategory == null
                                 ? Theme.of(context).colorScheme.outlineVariant
                                       .withValues(alpha: .45)
-                                : fintechBlue,
+                                : Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         child: Row(
@@ -160,8 +160,8 @@ class _HistoryScreenState extends State<HistoryScreen>
                             Icon(
                               Icons.category_outlined,
                               color: provider.filterCategory == null
-                                  ? fintechBlue
-                                  : Colors.white,
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onPrimary,
                             ),
                             const SizedBox(width: 11),
                             Expanded(
@@ -172,7 +172,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                                 style: TextStyle(
                                   color: provider.filterCategory == null
                                       ? Theme.of(context).colorScheme.onSurface
-                                      : Colors.white,
+                                      : Theme.of(context).colorScheme.onPrimary,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -259,8 +259,8 @@ class _HistoryScreenState extends State<HistoryScreen>
                         if (_period == 'custom' && provider.filterFrom != null)
                           Text(
                             '${formatShortDate(provider.filterFrom!)} – ${formatShortDate(provider.filterToExclusive!.subtract(const Duration(days: 1)))}',
-                            style: const TextStyle(
-                              color: pundiViolet,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -282,13 +282,15 @@ class _HistoryScreenState extends State<HistoryScreen>
                         Container(
                           width: 72,
                           height: 72,
-                          decoration: const BoxDecoration(
-                            color: pundiLilac,
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.receipt_long_outlined,
-                            color: pundiViolet,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 34,
                           ),
                         ),
@@ -407,7 +409,9 @@ class _PeriodOption extends StatelessWidget {
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
-          color: selected ? pundiViolet : Colors.transparent,
+          color: selected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,
@@ -418,7 +422,7 @@ class _PeriodOption extends StatelessWidget {
             maxLines: 1,
             softWrap: false,
             style: TextStyle(
-              color: selected ? Colors.white : null,
+              color: selected ? Theme.of(context).colorScheme.onPrimary : null,
               fontWeight: FontWeight.w900,
               fontSize: 13,
             ),
@@ -447,14 +451,18 @@ class _CategoryChoice extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: selected ? pundiViolet : pundiLilac.withValues(alpha: .65),
+        color: selected
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(13),
       ),
       child: Text(
         label,
         maxLines: 1,
         style: TextStyle(
-          color: selected ? Colors.white : pundiVioletDark,
+          color: selected
+              ? Theme.of(context).colorScheme.onPrimary
+              : Theme.of(context).colorScheme.onPrimaryContainer,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),

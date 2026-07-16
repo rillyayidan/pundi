@@ -65,8 +65,6 @@ class DebtsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Utang & piutang')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: fintechBlue,
-        foregroundColor: Colors.white,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const DebtEditorScreen()),
@@ -345,7 +343,7 @@ class _DebtEditorScreenState extends State<DebtEditorScreen> {
               DropdownButtonFormField<int>(
                 initialValue: _walletId,
                 decoration: const InputDecoration(
-                  labelText: 'Wallet pembayaran',
+                  labelText: 'Sumber pembayaran',
                 ),
                 items: wallets
                     .map(

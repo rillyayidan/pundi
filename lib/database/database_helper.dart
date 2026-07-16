@@ -406,7 +406,7 @@ class DatabaseHelper {
 
   Future<int> saveWalletTransfer(WalletTransferModel transfer) async {
     if (transfer.fromWalletId == transfer.toWalletId) {
-      throw ArgumentError('Wallet asal dan tujuan harus berbeda.');
+      throw ArgumentError('Sumber dana asal dan tujuan harus berbeda.');
     }
     final db = await database;
     if (transfer.id == null) {
@@ -458,7 +458,9 @@ class DatabaseHelper {
   }
 
   Future<void> deleteWallet(int id) async {
-    if (id == 1) throw ArgumentError('Wallet utama tidak dapat dihapus.');
+    if (id == 1) {
+      throw ArgumentError('Sumber dana utama tidak dapat dihapus.');
+    }
     final db = await database;
     final count =
         Sqflite.firstIntValue(
@@ -478,7 +480,7 @@ class DatabaseHelper {
         0;
     if (count > 0 || transferCount > 0) {
       throw StateError(
-        'Wallet masih memiliki transaksi atau transfer dan tidak dapat dihapus.',
+        'Sumber dana masih memiliki transaksi atau transfer dan tidak dapat dihapus.',
       );
     }
     await db.delete(DbConstants.wallets, where: 'id = ?', whereArgs: [id]);

@@ -198,8 +198,8 @@ class _BottomDock extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: selected
                         ? (itemIndex == 2
-                              ? fintechAccent.withValues(alpha: .14)
-                              : pundiLilac)
+                              ? Theme.of(context).colorScheme.secondaryContainer
+                              : Theme.of(context).colorScheme.primaryContainer)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(15),
                   ),
@@ -210,7 +210,13 @@ class _BottomDock extends StatelessWidget {
                         item.$1,
                         size: 21,
                         color: selected
-                            ? (itemIndex == 2 ? fintechAccent : fintechBlue)
+                            ? (itemIndex == 2
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.onSecondaryContainer
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer)
                             : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(height: 2),
@@ -221,7 +227,13 @@ class _BottomDock extends StatelessWidget {
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           color: selected
-                              ? (itemIndex == 2 ? fintechAccent : fintechBlue)
+                              ? (itemIndex == 2
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.onSecondaryContainer
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer)
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
